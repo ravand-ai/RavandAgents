@@ -13,6 +13,7 @@ dev = [
     "pytest>=8",
     "ravand-sessions",
     "ravand-audit",
+    "ravand-hooks",
 ]
 
 [tool.uv.workspace]
@@ -27,6 +28,7 @@ ravand-runtime = { workspace = true }
 ravand-permissions = { workspace = true }
 ravand-sessions = { workspace = true }
 ravand-audit = { workspace = true }
+ravand-hooks = { workspace = true }
 
 [tool.uv]
 package = false
