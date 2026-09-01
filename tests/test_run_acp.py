@@ -102,6 +102,65 @@ def test_session_update_list_content_after_permission_does_not_crash(
     assert events[-1].get("status") == "ok"
 
 
+def test_yes_fetch_uses_advertised_allow_once_option(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    _harness(repo)
+    result = _run(
+        repo,
+        home,
+        "fetch https://example.com",
+        extra_args=["--yes"],
+    )
+    assert result.returncode == 0, result.stderr
+    events = _events(result.stdout)
+    assert any(e.get("text") == "fetched-ok" for e in events)
+    assert events[-1].get("type") == "run.ended"
+    assert events[-1].get("status") == "ok"
+
+
+def test_deny_replies_with_reject_once_option(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    _harness(repo)
+    passwd = _run(repo, home, "write /etc/passwd")
+    assert passwd.returncode == 0, passwd.stderr
+    passwd_events = _events(passwd.stdout) if passwd.stdout.strip() else []
+    assert "permission.ask" in [e.get("type") for e in passwd_events]
+    assert "invalid permission optionId" not in passwd.stderr.lower()
+
+    denied_fetch = _run(
+        repo,
+        home,
+        "fetch https://example.com",
+        extra_env={"RAVAND_ASK": "1"},
+        stdin="n\n",
+    )
+    assert denied_fetch.returncode == 0, denied_fetch.stderr
+    denied_events = _events(denied_fetch.stdout)
+    assert not any(e.get("text") == "fetched-ok" for e in denied_events)
+    assert "invalid permission optionId" not in denied_fetch.stderr.lower()
+
+
+def test_stderr_spam_does_not_hang(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    _harness(repo)
+    result = subprocess.run(
+        ["uv", "run", "ravand", "run", "--format", "jsonl", "stderr-spam"],
+        cwd=repo,
+        env={**os.environ, "RAVAND_HOME": str(home)},
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=10,
+    )
+    assert result.returncode == 0, result.stderr
+    events = _events(result.stdout)
+    assert any(e.get("text") == "stderr-drained" for e in events)
+    assert events[-1].get("status") == "ok"
+
+
 def test_human_ask_yes_allows_fetch(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     home = tmp_path / "home"

@@ -94,20 +94,35 @@ def main() -> None:
                             },
                             "options": [
                                 {
-                                    "optionId": "allow",
-                                    "name": "Allow",
+                                    "optionId": "allow-once",
+                                    "name": "Allow once",
                                     "kind": "allow_once",
                                 },
                                 {
-                                    "optionId": "deny",
-                                    "name": "Deny",
+                                    "optionId": "reject-once",
+                                    "name": "Reject once",
                                     "kind": "reject_once",
                                 },
                             ],
                         },
                     }
                 )
-                _read()
+                reply = _read() or {}
+                option = (
+                    ((reply.get("result") or {}).get("outcome") or {}).get("optionId")
+                )
+                if option != "reject-once":
+                    _write(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": mid,
+                            "error": {
+                                "code": -32602,
+                                "message": f"invalid permission optionId: {option!r}",
+                            },
+                        }
+                    )
+                    continue
                 _write(
                     {"jsonrpc": "2.0", "id": mid, "result": {"stopReason": "end_turn"}}
                 )
@@ -132,13 +147,13 @@ def main() -> None:
                             },
                             "options": [
                                 {
-                                    "optionId": "allow",
-                                    "name": "Allow",
+                                    "optionId": "allow-once",
+                                    "name": "Allow once",
                                     "kind": "allow_once",
                                 },
                                 {
-                                    "optionId": "deny",
-                                    "name": "Deny",
+                                    "optionId": "reject-once",
+                                    "name": "Reject once",
                                     "kind": "reject_once",
                                 },
                             ],
@@ -149,7 +164,7 @@ def main() -> None:
                 option = (
                     ((reply.get("result") or {}).get("outcome") or {}).get("optionId")
                 )
-                if option != "deny":
+                if option == "allow-once":
                     _write(
                         {
                             "jsonrpc": "2.0",
@@ -165,6 +180,26 @@ def main() -> None:
                             },
                         }
                     )
+                _write(
+                    {"jsonrpc": "2.0", "id": mid, "result": {"stopReason": "end_turn"}}
+                )
+            elif "stderr-spam" in prompt:
+                sys.stderr.write("x" * (1024 * 1024))
+                sys.stderr.flush()
+                sid = params.get("sessionId")
+                _write(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "session/update",
+                        "params": {
+                            "sessionId": sid,
+                            "update": {
+                                "sessionUpdate": "agent_message_chunk",
+                                "content": {"type": "text", "text": "stderr-drained"},
+                            },
+                        },
+                    }
+                )
                 _write(
                     {"jsonrpc": "2.0", "id": mid, "result": {"stopReason": "end_turn"}}
                 )
