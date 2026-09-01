@@ -1,4 +1,4 @@
-"""Operator TUI (Textual). Multi-line prompt, streamed log, y/n permission."""
+"""Grok-like operator TUI: chat transcript, composer, permission card."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from typing import Any
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.containers import Vertical, VerticalScroll
 from textual.widgets import Footer, Log, Static, TextArea
 
 from ravand_cli.status import header_text
@@ -20,20 +21,102 @@ from ravand_runtime import audit_agent_denied, run_prompt
 Runner = Callable[..., int]
 
 
-class RavandApp(App[int]):
-    """Interactive operator screen over run_prompt."""
+class Turn(Static):
+    """One chat bubble."""
 
+    def __init__(self, role: str, text: str = "") -> None:
+        super().__init__(text, classes=f"turn turn-{role}")
+        self._buf = text
+
+    def append(self, text: str) -> None:
+        self._buf += text
+        self.update(self._buf)
+
+
+class RavandApp(App[int]):
+    """Chat-style operator screen over run_prompt. Not a coding TUI."""
+
+    TITLE = "ravand"
     CSS = """
-    Screen { layout: vertical; }
-    #status { height: 3; padding: 0 1; background: $primary; color: $text; }
-    #stream { height: 1fr; border: solid $surface; }
-    #perm { height: 3; padding: 0 1; background: $warning; color: $text; display: none; }
-    #prompt { height: 8; border: solid $accent; }
+    Screen {
+        layout: vertical;
+        background: #16141a;
+        color: #e8e4ef;
+    }
+    #brand {
+        dock: top;
+        height: 3;
+        padding: 0 2;
+        background: #1e1b24;
+        color: #e879f9;
+        text-style: bold;
+    }
+    #status {
+        height: 1;
+        padding: 0 2;
+        color: #a89bb5;
+        background: #1e1b24;
+    }
+    #transcript {
+        height: 1fr;
+        padding: 1 2;
+        scrollbar-gutter: stable;
+    }
+    .turn {
+        width: 100%;
+        margin: 0 0 1 0;
+        padding: 1 2;
+    }
+    .turn-user {
+        background: #2a2433;
+        border-left: thick #e879f9;
+        color: #f3eef8;
+    }
+    .turn-agent {
+        background: #1c1a22;
+        border-left: thick #7c6bf0;
+        color: #e8e4ef;
+    }
+    .turn-sys {
+        background: #1a181c;
+        color: #8a7e96;
+        border-left: thick #4a4454;
+    }
+    #perm {
+        height: auto;
+        min-height: 3;
+        padding: 1 2;
+        background: #3a2a10;
+        color: #ffe9a8;
+        border: tall #f5c542;
+        display: none;
+    }
+    #composer {
+        dock: bottom;
+        height: 9;
+        background: #1e1b24;
+        padding: 0 1 1 1;
+    }
+    #prompt {
+        height: 6;
+        background: #16141a;
+        border: tall #e879f9;
+        color: #e8e4ef;
+    }
+    #hint {
+        height: 1;
+        color: #6f6578;
+        padding: 0 1;
+    }
+    #stream { display: none; height: 0; }
+    Footer { background: #1e1b24; }
     """
 
     BINDINGS = [
         Binding("ctrl+c", "quit", "Quit"),
-        Binding("ctrl+j", "submit_prompt", "Submit", priority=True),
+        Binding("ctrl+j", "submit_prompt", "Send", priority=True),
+        Binding("ctrl+enter", "submit_prompt", "Send", priority=True, show=False),
+        Binding("ctrl+i", "submit_prompt", "Send", priority=True, show=False),
     ]
 
     def __init__(
@@ -50,19 +133,34 @@ class RavandApp(App[int]):
         self._perm_ok = False
         self._asking = False
         self._busy = False
+        self._agent_turn: Turn | None = None
 
     def compose(self) -> ComposeResult:
+        yield Static("ravand", id="brand")
         yield Static(id="status")
+        yield VerticalScroll(id="transcript")
         yield Log(id="stream", highlight=False)
         yield Static(id="perm")
-        yield TextArea(id="prompt")
+        with Vertical(id="composer"):
+            yield Static("enter newline  ·  ctrl+j send  ·  y/n tools  ·  ctrl+c quit", id="hint")
+            yield TextArea(id="prompt")
         yield Footer()
 
     def on_mount(self) -> None:
-        self.query_one("#status", Static).update(header_text(self.cwd))
+        self._refresh_header()
+        self.query_one("#transcript", VerticalScroll).mount(
+            Turn("sys", "Operator console. Policy and audit stay on. Not a Grok clone.")
+        )
         box = self.query_one("#prompt", TextArea)
-        box.tooltip = "Enter = newline. Ctrl+J = run."
         box.focus()
+
+    def _refresh_header(self, *, running: bool = False) -> None:
+        line = header_text(self.cwd)
+        if running:
+            line = f"running  ·  {line}"
+        self.query_one("#status", Static).update(line)
+        brand = "ravand  ·  running…" if running else "ravand"
+        self.query_one("#brand", Static).update(brand)
 
     def action_submit_prompt(self) -> None:
         box = self.query_one("#prompt", TextArea)
@@ -75,6 +173,10 @@ class RavandApp(App[int]):
         box.load_text("")
         self._busy = True
         box.disabled = True
+        self._refresh_header(running=True)
+        self.query_one("#transcript", VerticalScroll).mount(Turn("user", prompt))
+        self._agent_turn = Turn("agent", "")
+        self.query_one("#transcript", VerticalScroll).mount(self._agent_turn)
         self._run_agent(prompt)
 
     def on_key(self, event) -> None:  # noqa: ANN001
@@ -91,7 +193,11 @@ class RavandApp(App[int]):
     def _finish_ask(self, ok: bool) -> None:
         self._perm_ok = ok
         self._asking = False
-        self.query_one("#perm", Static).display = False
+        bar = self.query_one("#perm", Static)
+        bar.display = False
+        self.query_one("#transcript", VerticalScroll).mount(
+            Turn("sys", f"tool {'allowed' if ok else 'denied'}")
+        )
         self._perm_event.set()
 
     def _ask(self, detail: str) -> bool:
@@ -104,7 +210,7 @@ class RavandApp(App[int]):
     def _show_ask(self, detail: str) -> None:
         self._asking = True
         bar = self.query_one("#perm", Static)
-        bar.update(f"allow {detail}?  y / n")
+        bar.update(f"Allow tool?\n{detail}\n[y] allow    [n] deny")
         bar.display = True
 
     def _sink(self, event: dict[str, Any]) -> None:
@@ -113,12 +219,28 @@ class RavandApp(App[int]):
             text = str(event.get("text") or "")
             if text:
                 self.call_from_thread(self._write_stream, text)
+        elif kind == "permission.ask":
+            tool = str(event.get("tool") or "tool")
+            self.call_from_thread(self._write_stream, "")
+            self.call_from_thread(
+                lambda: self.query_one("#transcript", VerticalScroll).mount(
+                    Turn("sys", f"permission  ·  {tool}")
+                )
+            )
         elif kind == "run.ended":
             status = str(event.get("status") or "")
-            self.call_from_thread(self._write_stream, f"\n[{status}]\n")
+            self.call_from_thread(self._write_stream, "")
+            self.call_from_thread(
+                lambda s=status: self.query_one("#transcript", VerticalScroll).mount(
+                    Turn("sys", f"run {s}")
+                )
+            )
 
     def _write_stream(self, text: str) -> None:
         self.query_one("#stream", Log).write(text)
+        if self._agent_turn is not None and text:
+            self._agent_turn.append(text)
+            self.query_one("#transcript", VerticalScroll).scroll_end(animate=False)
 
     @work(thread=True)
     def _run_agent(self, prompt: str) -> None:
@@ -126,11 +248,11 @@ class RavandApp(App[int]):
             policy = resolve(self.cwd)
         except PolicyDenied as exc:
             audit_agent_denied(str(exc), cwd=self.cwd)
-            self.call_from_thread(self._write_stream, f"denied: {exc}\n")
+            self.call_from_thread(self._write_sys, f"denied: {exc}")
             self.call_from_thread(self._idle)
             return
         except UnknownAgent as exc:
-            self.call_from_thread(self._write_stream, f"{exc}\n")
+            self.call_from_thread(self._write_sys, str(exc))
             self.call_from_thread(self._idle)
             return
         self._runner(
@@ -143,15 +265,17 @@ class RavandApp(App[int]):
         )
         self.call_from_thread(self._idle)
 
+    def _write_sys(self, text: str) -> None:
+        self.query_one("#transcript", VerticalScroll).mount(Turn("sys", text))
+        self.query_one("#stream", Log).write(text)
+
     def _idle(self) -> None:
         self._busy = False
+        self._agent_turn = None
         box = self.query_one("#prompt", TextArea)
         box.disabled = False
         box.focus()
-        try:
-            self.query_one("#status", Static).update(header_text(self.cwd))
-        except Exception:
-            pass
+        self._refresh_header(running=False)
 
 
 def run_tui(cwd: Path) -> int:
