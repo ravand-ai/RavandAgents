@@ -22,7 +22,9 @@ Runner = Callable[..., int]
 
 
 class Turn(Static):
-    """One chat bubble."""
+    """One chat bubble. Mouse-selectable."""
+
+    ALLOW_SELECT = True
 
     def __init__(self, role: str, text: str = "") -> None:
         super().__init__(text, classes=f"turn turn-{role}")
@@ -41,6 +43,7 @@ class RavandApp(App[int]):
     """Chat-style operator screen over run_prompt. Not a coding TUI."""
 
     TITLE = "ravand"
+    ALLOW_SELECT = True
     CSS = """
     Screen {
         layout: vertical;
@@ -124,6 +127,8 @@ class RavandApp(App[int]):
 
     BINDINGS = [
         Binding("ctrl+c", "interrupt", "Stop", priority=True),
+        Binding("ctrl+shift+c", "copy_text", "Copy", priority=True),
+        Binding("ctrl+y", "copy_text", "Copy", show=False),
         Binding("ctrl+j", "submit_prompt", "Send", priority=True),
         Binding("ctrl+enter", "submit_prompt", "Send", priority=True, show=False),
         Binding("ctrl+i", "submit_prompt", "Send", priority=True, show=False),
@@ -163,7 +168,7 @@ class RavandApp(App[int]):
         yield Static(id="perm")
         with Vertical(id="composer"):
             yield Static(
-                "enter newline  ·  ctrl+j send  ·  y/n tools  ·  ctrl+c stop  ·  ctrl+c twice quit",
+                "enter newline  ·  ctrl+j send  ·  ctrl+shift+c copy  ·  y/n tools  ·  ctrl+c stop",
                 id="hint",
             )
             yield TextArea(id="prompt")
@@ -224,6 +229,37 @@ class RavandApp(App[int]):
         self._agent_turn = Turn("agent", "")
         self.query_one("#transcript", VerticalScroll).mount(self._agent_turn)
         self._run_agent(prompt)
+
+    def action_copy_text(self) -> None:
+        selected = ""
+        try:
+            selected = self.screen.get_selected_text() or ""
+        except Exception:
+            selected = ""
+        if selected.strip():
+            self.copy_to_clipboard(selected)
+            self._write_sys("copied selection")
+            return
+        last = ""
+        try:
+            agents = list(self.query("#transcript .turn-agent"))
+            if agents:
+                last = agents[-1].body
+            if not last.strip():
+                thinks = list(self.query("#transcript .turn-think"))
+                if thinks:
+                    last = thinks[-1].body
+        except Exception:
+            last = ""
+        if not last.strip():
+            try:
+                log = self.query_one("#stream", Log)
+                last = "".join(str(line) for line in getattr(log, "lines", []))
+            except Exception:
+                last = ""
+        if last.strip():
+            self.copy_to_clipboard(last)
+            self._write_sys("copied last reply")
 
     def action_quit(self) -> None:
         self.action_interrupt()
