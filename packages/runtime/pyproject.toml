@@ -2,7 +2,11 @@
 name = "ravand-runtime"
 version = "0.0.0"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "ravand-policy",
+    "ravand-profile",
+    "ravand-permissions",
+]
 
 [build-system]
 requires = ["uv_build>=0.11.8,<0.12.0"]

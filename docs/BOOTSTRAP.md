@@ -19,9 +19,11 @@ human writes a GitHub issue
     → tester + secret-scan subagents
     → security-gate reviews
     → human merges
-when ravand exists:
-    ravand run -a grok "implement #N"
-    same policy, same audit
+when `ravand run` works (Slice 2):
+    ravand run -a kimi "implement #N"
+    ravand run -a cursor "..."
+    ravand run -a grok "review PR"
+    same policy, same audit. Do not invoke kimi/cursor/grok naked on this repo after that.
 ```
 
 Do not wait for the native loop. The first dogfood is ACP spawn of tools we already have.

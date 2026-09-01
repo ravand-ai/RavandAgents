@@ -1,1 +1,5 @@
-"""ACP runtime package. Slice 0 stub."""
+"""ACP runtime."""
+
+from ravand_runtime.run import run_prompt
+
+__all__ = ["run_prompt"]
