@@ -29,7 +29,9 @@ from ravand_runtime.acp import (
     is_auth_error,
     spawn,
 )
+from ravand_memory import FailClosed as MemoryFailClosed, FileStore
 from ravand_runtime.hooks import load_tool_pre_command
+from ravand_runtime.memory import augment_prompt, load_memory_config, open_file_store
 from ravand_runtime.otel import Tracer
 from ravand_sessions import SessionRecord, SessionStore
 
@@ -455,6 +457,28 @@ def _attempt_run(
     return exit_code, status, session_acp_id, overflow
 
 
+def _memory_for_run(
+    policy: ResolvedPolicy,
+    prompt: str,
+    *,
+    cwd: Path,
+    task_id: str,
+) -> tuple[str, FileStore | None]:
+    """Return augmented prompt and optional FileStore when [memory] is configured."""
+    config = load_memory_config(cwd)
+    if config is None:
+        return prompt, None
+    store = open_file_store(
+        config,
+        policy,
+        root=ravand_home(),
+        cwd=cwd,
+        task_id=task_id,
+    )
+    notes = store.read()
+    return augment_prompt(prompt, notes), store
+
+
 def run_prompt(
     policy: ResolvedPolicy,
     prompt: str,
@@ -472,6 +496,14 @@ def run_prompt(
     store = SessionStore(root)
     log = AuditLog(root)
     tracer = tracer if tracer is not None else Tracer.from_env()
+
+    try:
+        agent_prompt, memory_store = _memory_for_run(
+            policy, prompt, cwd=cwd, task_id=task_id
+        )
+    except MemoryFailClosed as exc:
+        print(str(exc), file=sys.stderr)
+        return 3
 
     ensure_profile_home(policy.home)
     log.emit(
@@ -516,10 +548,10 @@ def run_prompt(
     )
     _emit(sink, {"type": "run.started"}, task_id=task_id)
 
-    exit_code, _, _, triggered = _attempt_run(
+    exit_code, status, _, triggered = _attempt_run(
         client,
         policy,
-        prompt,
+        agent_prompt,
         cwd=cwd,
         sink=sink,
         task_id=task_id,
@@ -531,6 +563,8 @@ def run_prompt(
         yes=yes,
         cancel=cancel,
     )
+    if status == "ok" and memory_store is not None:
+        memory_store.write(prompt)
     if not _should_overflow(policy, triggered=triggered):
         return exit_code
 

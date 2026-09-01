@@ -14,6 +14,7 @@ import sys
 
 AUTH_MODE = os.environ.get("FAKE_ACP_AUTH", "")
 STATE_PATH = os.environ.get("FAKE_ACP_STATE", "")
+MEMORY_MARKER = os.environ.get("FAKE_ACP_MEMORY_MARKER", "")
 
 auth_failed = False
 
@@ -205,6 +206,9 @@ def main() -> None:
                 )
             else:
                 sid = params.get("sessionId")
+                reply_text = "hello-from-fake"
+                if MEMORY_MARKER and MEMORY_MARKER in prompt:
+                    reply_text = "memory-read-ok"
                 _write(
                     {
                         "jsonrpc": "2.0",
@@ -260,7 +264,7 @@ def main() -> None:
                             "sessionId": sid,
                             "update": {
                                 "sessionUpdate": "agent_message_chunk",
-                                "content": {"type": "text", "text": "hello-from-fake"},
+                                "content": {"type": "text", "text": reply_text},
                             },
                         },
                     }
