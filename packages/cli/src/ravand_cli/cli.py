@@ -13,6 +13,7 @@ from ravand_registry import login_hint
 from ravand_cli.ask import confirm_permission, confirm_plan, should_ask
 from ravand_cli.status import run_status
 from ravand_cli.tui import run_tui
+from ravand_plugins import FailClosed as PluginFailClosed, PluginHost
 from ravand_runtime import audit_agent_denied, run_prompt, steer_prompt
 from ravand_runtime.plan import plan_mode_active
 
@@ -43,6 +44,11 @@ def _parser() -> argparse.ArgumentParser:
     steer = sub.add_parser("steer", help="continue a live session")
     steer.add_argument("session_id")
     steer.add_argument("text")
+    plugin = sub.add_parser("plugin", help="manage disk plugins")
+    plugin_sub = plugin.add_subparsers(dest="plugin_command")
+    plugin_add = plugin_sub.add_parser("add", help="install a plugin from a path")
+    plugin_add.add_argument("source", type=Path)
+    plugin_sub.add_parser("list", help="list installed plugins")
     return parser
 
 
@@ -134,6 +140,24 @@ def _steer(args: argparse.Namespace) -> int:
     return steer_prompt(args.session_id, args.text, sink=sink)
 
 
+def _plugin_add(args: argparse.Namespace) -> int:
+    host = PluginHost()
+    try:
+        manifest = host.add(args.source)
+    except PluginFailClosed as exc:
+        print(str(exc), file=sys.stderr)
+        return 3
+    print(json.dumps(manifest.to_dict()))
+    return 0
+
+
+def _plugin_list() -> int:
+    host = PluginHost()
+    rows = [manifest.to_dict() for manifest in host.list()]
+    print(json.dumps(rows))
+    return 0
+
+
 def _login(args: argparse.Namespace) -> int:
     profile = args.profile
     try:
@@ -174,6 +198,13 @@ def main(argv: list[str] | None = None) -> int:
         return run_status(Path.cwd())
     if args.command == "tui":
         return run_tui(Path.cwd())
+    if args.command == "plugin":
+        if args.plugin_command == "add":
+            return _plugin_add(args)
+        if args.plugin_command == "list":
+            return _plugin_list()
+        print(NOT_IMPLEMENTED, file=sys.stderr)
+        return 2
     print(NOT_IMPLEMENTED, file=sys.stderr)
     return 2
 
