@@ -22,7 +22,7 @@ This file is the gap list so features are added on purpose.
 | What account | Policy + Registry + named accounts |
 | Where (which tree) | cwd + classification |
 | May it write | Permission Broker |
-| Tape | Audit + Session + PGMQ archive |
+| Tape | Audit + Session + bus archive |
 | Spread across machines | Dispatcher + Worker |
 | See the run | Observability |
 

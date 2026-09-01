@@ -72,7 +72,7 @@ packages/                 # implement here; empty until generated
 ## Non-goals
 
 - Wrapping a vendor CLI's HTTP or scraping TUI output
-- Putting secrets in git, PGMQ, or work audit
+- Putting secrets in git, the bus, or work audit
 - Sharing one company CLI cookie across humans
 - Using the Cordis package as our kernel, or forking dsh
 - Being a general AI-governance GRC suite or a general AIOps platform

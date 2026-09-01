@@ -52,6 +52,13 @@ deny = ["claude-personal"]
 
 [pipeline]
 # ordered stages; same bindings as workflow
+
+[bus]
+# v2+. driver = "pgmq" | "kafka"
+# url from env or secret_ref, never a password in this file
+
+[triggers.webhook]
+# v2+. path + secret_ref. Unsigned requests fail closed
 ```
 
 ## ~/.ravand/config.toml (user)
@@ -148,7 +155,9 @@ type AuditEvent = {
 Path: `~/.ravand/audit.jsonl`  
 Do not put prompt bodies when profile is `work` unless `RAVAND_AUDIT_BODIES=1`.
 
-## PGMQ task payload
+## Bus task payload
+
+Same JSON on PGMQ, Kafka, or another bus provider. No tokens, no HOME contents, no cookies.
 
 ```ts
 type TaskMessage = {
@@ -184,7 +193,7 @@ type WorkerInfo = {
 
 Root span name: `invoke_agent`  
 Tool span name: `execute_tool`  
-Queue span name: `messaging` (`messaging.system=pgmq`)
+Queue span name: `messaging` (`messaging.system=pgmq` or `kafka` or the driver name)
 
 Attributes:
 

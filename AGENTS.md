@@ -76,11 +76,11 @@ Ship a CLI `ravand` that:
 7. Writes session + audit records
 8. Streams text to stdout
 
-v0 is **one process**. Do not stand up Postgres or PGMQ until v2 flags exist.
+v0 is **one process**. Do not stand up a bus or Postgres until v2 flags exist.
 
 ### Hard constraints
 
-- Do not put secrets in `harness.toml`, PGMQ, or work audit (unless `RAVAND_AUDIT_BODIES=1`).
+- Do not put secrets in `harness.toml`, the bus, or work audit (unless `RAVAND_AUDIT_BODIES=1`).
 - Never copy or log vendor CLI cookie files from profile HOMEs. API keys live in the profile secret store or cloud vault. Use them. Do not log them.
 - If a subscription CLI needs a login, refuse and print the vendor login command.
 - Work profile MUST NOT run on a repo whose policy says `profile = "personal"` and the reverse. Customer classification never uses a personal account.
@@ -167,16 +167,18 @@ Read first: SCHEMA OTel.
 
 Next: Slice 6, only after `ravand run` works on one machine.
 
-#### Slice 6: PGMQ (feature-flagged)
+#### Slice 6: Bus (feature-flagged)
 
-Read first: HLD Dispatcher, Worker, PGMQ. SCHEMA TaskMessage, WorkerInfo.
+Read first: HLD Dispatcher, Worker, Bus. SCHEMA TaskMessage, WorkerInfo. MODULAR bus seam.
 
-Only if `RAVAND_PGMQ_URL` is set.
+Only if a bus is configured. Default driver is PGMQ.
 
+- Talk to the Bus seam, not to `pgmq` from Policy or Runtime
 - Dispatcher `send` to `q.tasks`
-- Worker loop `read(vt=600)` + `set_vt` heartbeat + `archive`
+- Worker loop `read` + heartbeat + archive/ack
 - Payload exactly as SCHEMA.md (no secrets)
-- Worker skips job if local profile cannot run that agent (`capability_miss`, do not burn long VT; nack fast)
+- Worker skips job if local profile cannot run that agent (`capability_miss`, nack fast)
+- Do not add Kafka in this slice. Postgres + PGMQ is the first provider.
 
 ### Code style
 

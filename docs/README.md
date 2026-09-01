@@ -42,7 +42,7 @@ Do not start this path until you have finished the design path.
 | 3 | `~/.ravand/sessions/` and `audit.jsonl` | SCHEMA SessionRecord and Audit event, HLD Session and Audit | 4 |
 | 4 | Overflow agent on rate_limit | HLD run path step 8, SCHEMA `overflowOf` and `agent.overflow` | 5 |
 | 5 | OTel spans if `OTEL_EXPORTER_OTLP_ENDPOINT` is set | SCHEMA OTel | 6 |
-| 6 | PGMQ worker, only if `RAVAND_PGMQ_URL` is set | HLD Dispatcher, Worker, PGMQ. SCHEMA TaskMessage, WorkerInfo | stop. `ravand run` must already work |
+| 6 | Bus worker, PGMQ default | HLD Bus, SCHEMA TaskMessage, MODULAR bus seam | stop. `ravand run` must already work |
 
 Prompt text for each slice lives in [AGENTS.md](../AGENTS.md). Copy one slice. Do not ask an agent for Slice 6 before Slice 2 works on one machine.
 

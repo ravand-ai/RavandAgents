@@ -32,7 +32,8 @@ Exit: you can run Ravand Agents on a real repo with Grok Build logged into the p
 
 - Workflows and pipelines; both bind tools, functions, subagents
 - Human verification queue (named approver, timeout deny)
-- Postgres + PGMQ (`q.tasks`, `q.events`, `q.results`)
+- HTTP API and signed webhooks to start a run or workflow
+- Bus seam: Postgres + PGMQ default (`q.tasks`, `q.events`, `q.results`). Kafka as an alternate provider
 - Worker process + capability advertisement
 - Cloud: multiple users, roles, per-project access
 - Org vault for API keys. Still no CLI cookies in SaaS

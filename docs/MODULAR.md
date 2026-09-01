@@ -7,7 +7,11 @@ Next: [Schema](SCHEMA.md)
 
 This file is product law for how a project picks providers, loops, tools, sandboxes, and people. [HLD.md](HLD.md) names services. This file names the seams those services plug.
 
-Ravand is fully modular. A project chooses its providers, accounts, agent loop, tools, functions, MCP servers, sandbox, workflows, and pipelines. Nothing is hard-wired except kernel law: fail closed, secrets stay out of git and out of the queue, profile is the seat.
+Ravand is fully modular. A project chooses its providers, accounts, agent loop, tools, functions, MCP servers, sandbox, workflows, pipelines, and (later) which message bus it uses. Nothing is hard-wired except kernel law: fail closed, secrets stay out of git and out of the queue, profile is the seat.
+
+The kernel uses **dependency injection**. Plugins declare the services they need by key. The context waits until those services exist, then mounts. Do not import a concrete Postgres, Kafka, or sandbox class from business code. Swap the provider in the preset.
+
+Other patterns we keep: seams (definition, provider, consumer), waterfall for permission, strategy for loop/sandbox/bus, append-only log. We do not invent a second container beside the kernel.
 
 ## Two ways to talk to a model
 
@@ -54,8 +58,38 @@ Each row is a plugin. The project preset lists which provider implements it.
 | Pipeline | ordered stages | Same bindings as workflow |
 | Eval | golden tasks, judges | Optional |
 | Metrics | duration, tool calls, cost proxy, result enum | Always on in-process. OTLP if set |
+| Trigger | CLI, HTTP API, webhook | Policy still runs before any run starts |
+| Bus | PGMQ (default), Kafka, other | Same task payload. Secrets never on the bus |
 
 Workflows and pipelines are both runners. The difference is shape (graph vs ordered stages), not what they may attach. Either may accept tools, functions, and subagents. A step that cannot resolve its bindings fails closed.
+
+## Triggers: CLI, API, webhook
+
+A run or a workflow may start from:
+
+| Trigger | When |
+|---------|------|
+| CLI | `ravand run`, local v0 |
+| HTTP API | Cloud and later local server. Authn required. |
+| Webhook | Signed inbound event. A rule maps the event to a workflow, pipeline, or single run. |
+
+The trigger does not skip Policy. Gateway receives the event, resolves policy and account, then enqueues or runs. An unsigned or unknown webhook fails closed.
+
+Webhook secrets live in the profile store or org vault, same as API keys. They do not go in `harness.toml` as raw values. The file may name `secret_ref`.
+
+## Bus: Postgres first, not Postgres-only
+
+v2 ships a **bus seam**. Dispatcher and Worker talk to `q.tasks`, `q.events`, `q.results` as names. They do not import `pgmq` from policy or runtime code.
+
+| Provider | Role |
+|----------|------|
+| Postgres + PGMQ | Default. This is what we build first and dogfood. |
+| Kafka | Alternate bus. Same payload, different delivery. |
+| Other | Allowed if it implements the seam: send, read with visibility timeout or equivalent, heartbeat, archive/ack, poison after N failures. |
+
+Focus stays on Postgres: session/task tables, eval store, and the first bus provider are Postgres. A deployment that picks Kafka still may use Postgres for records, or another store later. Do not require Kafka. Do not scatter `RAVAND_PGMQ_URL` through packages. One bus config: driver + URL.
+
+Idempotency stays `task_id` on the Session Store, independent of the bus.
 
 ## Human verification
 
@@ -111,6 +145,6 @@ These are not project options:
 
 v0 still ships the ACP + seat path: `ravand which`, `ravand run`, isolated HOMEs, permission ask, session, audit.
 
-Native loop, named API accounts, sandbox plugins, workflows, pipelines, cloud users, eval store: later slices. The seams exist in this doc so HLD and SCHEMA do not paint themselves into a CLI-only corner.
+Native loop, named API accounts, sandbox plugins, workflows, pipelines, HTTP API, webhooks, bus (PGMQ first), cloud users, eval store: later slices. The seams exist in this doc so HLD and SCHEMA do not paint themselves into a CLI-only or Postgres-only corner.
 
 Next: [Schema](SCHEMA.md)

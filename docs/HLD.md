@@ -6,7 +6,7 @@ Previous: [Roadmap](ROADMAP.md)
 Next: [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md), then [Modular runtime](MODULAR.md)
 
 Status: v0.3  
-Style: local-first, then Postgres/PGMQ workers and cloud users  
+Style: local-first, then workers on a bus (Postgres+PGMQ default) and cloud users  
 Kernel: ours, Cordis-shaped. Not the Cordis package.  
 I/O with agents: ACP v1 stdio and/or a native loop, both behind policy.
 
@@ -28,7 +28,8 @@ Human / IDE / CI / cloud user
    Workflow · Pipeline
    Session · Audit · Eval · Metrics
         │
- Dispatcher (v2) ── PGMQ ── Worker machines
+ Dispatcher (v2) ── bus (PGMQ default) ── Worker machines
+ HTTP API · webhooks (later)
 ```
 
 Seam list and project rules: [MODULAR.md](MODULAR.md).
@@ -38,13 +39,14 @@ Seam list and project rules: [MODULAR.md](MODULAR.md).
 1. Every run has a **profile** (seat HOME) and a **preset** (plugin tree). Policy beats flags except audited override.
 2. Accounts are named. One vendor may have many CLI logins and many API keys. The project names which accounts may run.
 3. Two model paths: subscription CLI over ACP, or native loop with a named API account. Do not wrap a vendor CLI's HTTP. Do not scrape TUI output.
-4. Secrets never live in `harness.toml`, PGMQ, or work audit (unless `RAVAND_AUDIT_BODIES=1`). CLI cookies stay in the profile HOME and are not read. API keys live in the profile secret store or the cloud vault.
+4. Secrets never live in `harness.toml`, the bus, or work audit (unless `RAVAND_AUDIT_BODIES=1`). CLI cookies stay in the profile HOME and are not read. API keys live in the profile secret store or the cloud vault.
 5. Workflows and pipelines may both bind tools, functions, and subagents. Missing bindings fail closed.
 6. Human verification, when required, blocks the action until allow or timeout-deny.
-7. v0 = one process, ACP + seats. Native loop, sandbox plugins, workflows, cloud users, eval store come later. PGMQ is v2.
-8. PGMQ moves **tasks**, never credentials.
-9. Every task has `task_id` + a trace. Fail closed if policy, permission, or account cannot be evaluated.
-10. Policy and Permission Broker cannot be unmounted.
+7. v0 = one process, ACP + seats. Native loop, sandbox plugins, workflows, HTTP API, webhooks, cloud users, eval store come later. The bus is v2.
+8. The bus moves **tasks**, never credentials. Default bus is Postgres + PGMQ. Kafka and others are providers of the same seam. Do not import the bus driver from Policy or Runtime.
+9. Kernel services use dependency injection by key. Packages depend on seams, not on Postgres.
+10. Every task has `task_id` + a trace. Fail closed if policy, permission, or account cannot be evaluated.
+11. Policy and Permission Broker cannot be unmounted.
 
 ## Services
 
@@ -58,12 +60,16 @@ Logical API:
 - `Run(cwd, prompt, agent?) → stream SessionEvent`
 - `Login(profile, account) → hint | status`
 - `Cancel(sessionId)`
-- later: `Approve(taskId)`, `Eval(taskId)`, workflow/pipeline start
+- later: HTTP API for the same calls
+- later: inbound webhook → workflow, pipeline, or run
+- later: `Approve(taskId)`, `Eval(taskId)`
 
 Modes:
 
 - ACP **client** (CLI, CI)
 - ACP **server** later (Zed/VS Code see one agent named `ravand`)
+- HTTP **API** later (same logical calls)
+- **Webhook** later (signed inbound → policy → bus or local run)
 
 ### Policy
 
@@ -139,17 +145,17 @@ Append-only. Separate concern from Session. Work bodies off by default.
 
 ### Dispatcher (v2)
 
-`pgmq.send` after Policy resolve. Routes by profile/agent. Archives completed messages.
+After Policy resolve, `Bus.send` to `q.tasks`. Routes by profile/agent/account. Archives or acks completed messages. The bus provider is injected. Default implementation is PGMQ.
 
 ### Worker (v2)
 
-One process per machine that already has CLI logins.
+One process per machine that already has the allowed accounts.
 
-1. `read('q.tasks', vt=600)`
-2. `set_vt` heartbeat while ACP live
+1. `Bus.read('q.tasks')` with visibility timeout (PGMQ `vt=600` or Kafka equivalent)
+2. Heartbeat while the run is live
 3. if `Profile.AuthOK` false → fast nack `capability_miss`
 4. run Runtime on local worktree
-5. `archive` on terminal state
+5. archive or ack on terminal state
 
 Workspace must exist on the worker. Queue does not ship git.
 
@@ -182,11 +188,13 @@ MCP servers, functions, and subagents are selective per project. Slack and other
 9. stream to caller
 ```
 
-v2 inserts Dispatcher between 4 and 5 when `RAVAND_PGMQ_URL` is set.
+v2 inserts Dispatcher between 4 and 5 when a bus is configured.
 
-## PGMQ
+HTTP API and webhooks enter at step 1. They do not skip Policy.
 
-Infra: Postgres only.
+## Bus
+
+Seam, not a Postgres import. Logical queues:
 
 | Queue | From | To |
 |---|---|---|
@@ -197,9 +205,11 @@ Infra: Postgres only.
 Optional split: `q.tasks.work`, `q.tasks.personal`.
 FIFO group key = repo.
 
-Primitives: `send`, `read(vt)`, `set_vt`, `archive` (success/fail), `delete` only for poison after inspect.
+Primitives the provider must implement: `send`, `read` with visibility timeout or equivalent, heartbeat, archive/ack (success/fail), poison after inspect.
 
-Idempotency: `task_id`. Session Store rejects second start if status is running|done.
+Default provider: Postgres + PGMQ. Alternate: Kafka. Others if they meet the primitives.
+
+Idempotency: `task_id`. Session Store rejects second start if status is running|done. That store may be files, SQLite, or Postgres. It is not the bus.
 
 ## Trust
 
@@ -209,12 +219,12 @@ Idempotency: `task_id`. Session Store rejects second start if status is running|
 | Vendor CLI cookies | profile HOME, vendor files | **no** |
 | LLM API keys | profile secret store or cloud vault | **use, never log** |
 | Prompts | memory + optional events | work: default no persist |
-| Task metadata | sessions / Postgres | yes |
+| Task metadata | sessions / DB | yes |
 
 ## Deployment
 
 - v0: single binary on the laptop that has the CLIs
-- v2: Gateway + Postgres; workers on machines that have the repo and the allowed accounts
+- v2: Gateway + bus (PGMQ default) + workers on machines that have the repo and the allowed accounts. HTTP API and webhooks on the Gateway.
 - Cloud: users and roles. Org vault for API keys. Still never store company CLI cookies in SaaS.
 
 Next: [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md), then [Modular runtime](MODULAR.md)
