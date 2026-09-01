@@ -105,6 +105,31 @@ def _resolve_account(
     return account_id, kind
 
 
+def _parse_mcp(harness: dict) -> list[dict]:
+    if "mcp" not in harness:
+        return []
+    mcp = harness.get("mcp")
+    if not isinstance(mcp, dict):
+        raise PolicyDenied("harness mcp table is invalid")
+    if "servers" not in mcp:
+        return []
+    servers = mcp.get("servers")
+    if not isinstance(servers, list):
+        raise PolicyDenied("harness mcp servers must be a list")
+    parsed: list[dict] = []
+    for item in servers:
+        if not isinstance(item, dict):
+            raise PolicyDenied("mcp server must be a table")
+        name = item.get("name")
+        command = item.get("command")
+        if not isinstance(name, str) or not name.strip():
+            raise PolicyDenied("mcp server name is invalid")
+        if not isinstance(command, list) or not command:
+            raise PolicyDenied("mcp server command is invalid")
+        parsed.append({"name": name, "command": [str(x) for x in command]})
+    return parsed
+
+
 def resolve(
     cwd: Path,
     *,
@@ -168,6 +193,7 @@ def resolve(
     if not isinstance(spec, dict) or "command" not in spec:
         raise UnknownAgent(f"agent {agent!r} has no command")
     command = [str(x) for x in spec["command"]]
+    mcp = _parse_mcp(harness)
 
     account = ""
     account_kind = ""
@@ -189,6 +215,7 @@ def resolve(
         permissions=permissions,
         classification=classification,
         command=command,
+        mcp=mcp,
         agent=agent,
         account=account,
         account_kind=account_kind,
