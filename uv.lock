@@ -7,6 +7,7 @@ members = [
     "ravand-agents",
     "ravand-audit",
     "ravand-cli",
+    "ravand-hooks",
     "ravand-permissions",
     "ravand-policy",
     "ravand-profile",
@@ -144,6 +145,7 @@ dependencies = [
 dev = [
     { name = "pytest" },
     { name = "ravand-audit" },
+    { name = "ravand-hooks" },
     { name = "ravand-sessions" },
 ]
 
@@ -154,6 +156,7 @@ requires-dist = [{ name = "ravand-cli", editable = "packages/cli" }]
 dev = [
     { name = "pytest", specifier = ">=8" },
     { name = "ravand-audit", editable = "packages/audit" },
+    { name = "ravand-hooks", editable = "packages/hooks" },
     { name = "ravand-sessions", editable = "packages/sessions" },
 ]
 
@@ -182,6 +185,11 @@ requires-dist = [
     { name = "ravand-runtime", editable = "packages/runtime" },
     { name = "textual", specifier = ">=8,<9" },
 ]
+
+[[package]]
+name = "ravand-hooks"
+version = "0.0.0"
+source = { editable = "packages/hooks" }
 
 [[package]]
 name = "ravand-permissions"
