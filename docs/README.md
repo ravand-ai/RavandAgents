@@ -63,7 +63,7 @@ To implement with Grok, Kimi, and Cursor, read [SECURITY.md](SECURITY.md) then [
 | [../README.md](../README.md) | What the product is | [SUCCESS.md](SUCCESS.md) |
 | [SUCCESS.md](SUCCESS.md) | Wedge and what we ship first | [SECURITY.md](SECURITY.md) |
 | [SECURITY.md](SECURITY.md) | Fail closed, agent grants, secret rules | [BOOTSTRAP.md](BOOTSTRAP.md) |
-| [BOOTSTRAP.md](BOOTSTRAP.md) | Ravand builds Ravand. Issue order. Grok/Kimi/Cursor | GitHub issues, then Slice 0 |
+| [BOOTSTRAP.md](BOOTSTRAP.md) | Ravand builds Ravand. Issue order. Grok/Kimi/Cursor | leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open. Do not implement issue 51. |
 | [ROADMAP.md](ROADMAP.md) | What ships in v0, v1, v2, v3 | [HLD.md](HLD.md) |
 | [HLD.md](HLD.md) | Which services exist and how a run flows | [DSH-CORDIS.md](DSH-CORDIS.md) |
 | [DSH-CORDIS.md](DSH-CORDIS.md) | Cordis architecture we study, kernel we write, differences we keep | [MODULAR.md](MODULAR.md) |
