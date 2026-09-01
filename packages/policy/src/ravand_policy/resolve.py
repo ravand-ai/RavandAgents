@@ -28,6 +28,7 @@ class ResolvedPolicy:
     classification: str
     command: list[str]
     mcp: list[dict] = field(default_factory=list)
+    skills_allow: list[str] = field(default_factory=list)
     agent: str = ""
     account: str = ""
     account_kind: str = ""
@@ -144,6 +145,33 @@ def _parse_mcp(harness: dict) -> list[dict]:
     return parsed
 
 
+def _parse_skills_allow(harness: dict) -> list[str]:
+    if "skills" not in harness:
+        return []
+    skills = harness.get("skills")
+    if not isinstance(skills, dict):
+        raise PolicyDenied("harness skills table is invalid")
+    if "allow" not in skills:
+        return []
+    allow = skills.get("allow")
+    if not isinstance(allow, list):
+        raise PolicyDenied("harness skills.allow must be a list")
+    parsed: list[str] = []
+    for item in allow:
+        if not isinstance(item, str) or not item.strip():
+            raise PolicyDenied("harness skills.allow entries must be strings")
+        parsed.append(item)
+    return parsed
+
+
+def require_skill(policy: ResolvedPolicy, name: str) -> None:
+    """Fail closed when allow is set and name is missing. SKILL.md names only."""
+    if not policy.skills_allow:
+        return
+    if name not in policy.skills_allow:
+        raise PolicyDenied(f"skill {name!r} is not allowed")
+
+
 def resolve(
     cwd: Path,
     *,
@@ -208,6 +236,7 @@ def resolve(
         raise UnknownAgent(f"agent {agent!r} has no command")
     command = [str(x) for x in spec["command"]]
     mcp = _parse_mcp(harness)
+    skills_allow = _parse_skills_allow(harness)
 
     account = ""
     account_kind = ""
@@ -231,6 +260,7 @@ def resolve(
         classification=classification,
         command=command,
         mcp=mcp,
+        skills_allow=skills_allow,
         agent=agent,
         account=account,
         account_kind=account_kind,

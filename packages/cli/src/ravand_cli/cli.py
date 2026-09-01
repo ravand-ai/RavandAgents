@@ -67,6 +67,7 @@ def _which(args: argparse.Namespace) -> int:
         "home": policy.home,
         "command": policy.command,
         "mcp": policy.mcp,
+        "skillsAllow": policy.skills_allow,
         "auth": "unknown",
     }
     print(json.dumps(payload))
