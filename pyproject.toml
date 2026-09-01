@@ -18,6 +18,9 @@ members = ["packages/*"]
 
 [tool.uv.sources]
 ravand-cli = { workspace = true }
+ravand-policy = { workspace = true }
+ravand-profile = { workspace = true }
+ravand-registry = { workspace = true }
 
 [tool.uv]
 package = false

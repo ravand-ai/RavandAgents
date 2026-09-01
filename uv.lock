@@ -104,6 +104,18 @@ source = { editable = "packages/audit" }
 name = "ravand-cli"
 version = "0.0.0"
 source = { editable = "packages/cli" }
+dependencies = [
+    { name = "ravand-policy" },
+    { name = "ravand-profile" },
+    { name = "ravand-registry" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ravand-policy", editable = "packages/policy" },
+    { name = "ravand-profile", editable = "packages/profile" },
+    { name = "ravand-registry", editable = "packages/registry" },
+]
 
 [[package]]
 name = "ravand-permissions"

@@ -26,11 +26,10 @@ def test_ravand_help_exits_zero() -> None:
     assert "usage" in combined or "ravand" in combined
 
 
-def test_ravand_which_is_not_implemented_yet() -> None:
+def test_ravand_which_exits_zero_on_this_repo() -> None:
     result = _ravand("which")
-    assert result.returncode != 0
-    combined = (result.stdout + result.stderr).lower()
-    assert "not implemented" in combined
+    assert result.returncode == 0, result.stderr
+    assert "grok" in result.stdout
 
 
 def test_unknown_command_is_not_implemented() -> None:
