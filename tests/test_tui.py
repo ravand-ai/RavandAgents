@@ -1,7 +1,8 @@
-"""ravand tui: operator screen. Non-TTY must refuse."""
+"""ravand tui: operator screen. Non-TTY must refuse. Textual app is interactive."""
 
 from __future__ import annotations
 
+import asyncio
 import os
 import subprocess
 from pathlib import Path
@@ -35,3 +36,61 @@ def test_help_lists_tui() -> None:
     result = _ravand("--help")
     assert result.returncode == 0
     assert "tui" in (result.stdout + result.stderr).lower()
+
+
+def test_textual_app_streams_fake_run() -> None:
+    from ravand_cli.tui import RavandApp
+
+    seen: list[str] = []
+
+    def fake_runner(policy, prompt, *, cwd, sink, ask, yes):
+        seen.append(prompt)
+        sink({"type": "text.delta", "text": "hello-tui"})
+        sink({"type": "run.ended", "status": "ok"})
+        return 0
+
+    app = RavandApp(cwd=ROOT, runner=fake_runner)
+
+    captured: dict[str, str] = {}
+
+    async def _go() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            box = app.query_one("#prompt")
+            box.value = "say hi"
+            await box.action_submit()
+            await pilot.pause(0.2)
+            log = app.query_one("#stream")
+            captured["text"] = "".join(str(line) for line in getattr(log, "lines", []))
+
+    asyncio.run(_go())
+    assert seen == ["say hi"]
+    assert "hello-tui" in captured.get("text", "")
+
+
+def test_textual_app_permission_y_allows() -> None:
+    from ravand_cli.tui import RavandApp
+
+    allowed: list[bool] = []
+
+    def fake_runner(policy, prompt, *, cwd, sink, ask, yes):
+        allowed.append(bool(ask) and ask("Fetch: https://example.com"))
+        if allowed[-1]:
+            sink({"type": "text.delta", "text": "fetched-ok"})
+        sink({"type": "run.ended", "status": "ok"})
+        return 0
+
+    app = RavandApp(cwd=ROOT, runner=fake_runner)
+
+    async def _go() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            box = app.query_one("#prompt")
+            box.value = "fetch"
+            await box.action_submit()
+            await pilot.pause(0.2)
+            await pilot.press("y")
+            await pilot.pause(0.2)
+
+    asyncio.run(_go())
+    assert allowed == [True]
