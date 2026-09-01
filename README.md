@@ -1,5 +1,10 @@
 # Ravand Agents: Subscription Agent Control Plane
 
+Reading: [docs map](docs/README.md)
+
+Previous: [docs map](docs/README.md)
+Next: [Roadmap](docs/ROADMAP.md)
+
 Ravand Agents sits above coding-agent CLIs you already pay for (Claude Code, Grok Build, Kimi Code, Cursor Agent, later OpenCode / DeepSeek Harness).
 
 It does **not** call model APIs and does **not** hold provider keys.
@@ -36,12 +41,13 @@ ravand status                # workers, queue (v2), login probes
 ## Repo layout
 
 ```
-AGENTS.md                 # instructions for Grok Build / other agents
-README.md
+AGENTS.md                 # project rules + implement slices
+README.md                 # product pitch
 docs/
+  README.md               # start here: reading order
+  ROADMAP.md
   HLD.md
   SCHEMA.md
-  ROADMAP.md
   GOVERNANCE.md
 examples/
   harness.toml
@@ -76,44 +82,4 @@ packages/                 # implement here; empty until generated
 
 ## Next
 
-Read `AGENTS.md`, then `docs/HLD.md` and `docs/SCHEMA.md`. Implement in the order in `AGENTS.md`.
-
-Log the CLIs you actually have into isolated HOMEs later. For first slice, system login is fine.
-
-```bash
-grok login    # if you use Grok Build as first ACP backend
-# kimi login
-# claude
-```
-
-Start Grok Build in this directory so it reads `AGENTS.md`:
-
-```bash
-grok
-```
-
-Then prompt:
-
-```
-Read AGENTS.md, docs/HLD.md, and docs/SCHEMA.md.
-Implement Slice 0 and Slice 1 only: repo skeleton + ravand which + harness.toml parser + profile dirs.
-Do not spawn ACP yet. Add tests for profile mismatch and deny list.
-```
-
-Next prompts (one slice each):
-
-```
-Implement Slice 2: ACP runtime for grok agent stdio using @agentclientprotocol/sdk.
-```
-
-```
-Implement Slice 3: session store and audit.jsonl as specified in docs/SCHEMA.md.
-```
-
-```
-Implement Slice 4: overflow agent on rate_limit.
-```
-
-Do not ask it to implement PGMQ until `ravand run` works on one machine.
-
-Point Grok at a real project later by copying `examples/harness.toml` into that project as `harness.toml`.
+Open [docs/README.md](docs/README.md). Follow the design path there. Do not start Slice 0 from this page.

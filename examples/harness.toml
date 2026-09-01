@@ -1,3 +1,7 @@
+# Reading: docs/README.md
+# Previous: docs/GOVERNANCE.md
+# Next: examples/policy.user.toml, then AGENTS.md
+
 profile = "work"
 default = "grok"
 overflow = "kimi"

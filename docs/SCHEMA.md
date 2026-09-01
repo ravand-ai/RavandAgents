@@ -1,5 +1,12 @@
 # Schemas
 
+Reading: [Docs map](README.md)
+
+Previous: [HLD](HLD.md)
+Next: [Governance](GOVERNANCE.md)
+
+Canonical samples: [examples/harness.toml](../examples/harness.toml), [examples/policy.user.toml](../examples/policy.user.toml).
+
 ## harness.toml (repo)
 
 ```toml
@@ -196,3 +203,5 @@ ravand.permission.denied
   "auth": "unknown"
 }
 ```
+
+Next: [Governance](GOVERNANCE.md)

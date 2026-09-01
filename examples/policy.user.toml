@@ -1,3 +1,7 @@
+# Reading: docs/README.md
+# Previous: examples/harness.toml
+# Next: AGENTS.md, Adopted product rules
+
 default_profile = "personal"
 audit_bodies = false
 

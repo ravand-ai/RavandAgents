@@ -1,6 +1,13 @@
 # Project rules
 
-This file is the project layer. The task protocol lives in the installed task-protocol skill.
+Reading: [docs map](docs/README.md)
+
+Previous: [Governance](docs/GOVERNANCE.md) and the example tomls
+Next: Slice 0 in this file, only after you finish the design path in the docs map
+
+This file has two parts. Stack, verify, and branches are for the task protocol. "Adopted product rules" is the implement contract. Skip to that heading if you are reading the design.
+
+The task protocol lives in the installed task-protocol skill.
 
 ## Stack
 
@@ -21,7 +28,7 @@ Confirm the nested design-pack directory is absent.
 Confirm these files exist:
 
 ```
-test -f docs/HLD.md && test -f AGENTS.md && test -f examples/harness.toml && echo 'core files present'
+test -f docs/README.md && test -f docs/HLD.md && test -f AGENTS.md && test -f examples/harness.toml && echo 'core files present'
 ```
 
 Pass: leftover-name searches empty, nested design-pack directory absent, core files present.
@@ -83,14 +90,22 @@ v0 is **one process**. Do not stand up Postgres or PGMQ until v2 flags exist.
 
 ### Implementation order (do not skip)
 
+Read [docs/README.md](docs/README.md) build path before Slice 0. One slice per change.
+
 #### Slice 0: skeleton
+
+Read first: [README.md](README.md), HLD services list.
 
 - TypeScript (preferred) or Go. Node 22+.
 - Package manager: pnpm if TS.
 - `packages/cli` bin: `ravand`
 - Commands that print “not implemented” except `ravand which` after slice 1.
 
+Next: Slice 1.
+
 #### Slice 1: Policy + Profile + Registry (no ACP yet)
+
+Read first: [docs/SCHEMA.md](docs/SCHEMA.md), [examples/harness.toml](examples/harness.toml), [examples/policy.user.toml](examples/policy.user.toml), HLD Policy / Profile / Registry.
 
 - Parse `examples/harness.toml` schema in `docs/SCHEMA.md`
 - `ravand which` prints JSON: `{ profile, agent, overflow, permissions, home, command }`
@@ -98,7 +113,11 @@ v0 is **one process**. Do not stand up Postgres or PGMQ until v2 flags exist.
 - Isolated dirs: create `~/.ravand/profiles/<name>` if missing
 - Unit tests for deny list, profile mismatch, missing harness.toml fallback
 
+Next: Slice 2.
+
 #### Slice 2: ACP Runtime for ONE agent
+
+Read first: HLD ACP Runtime, HLD Permission Broker, SCHEMA CLI exit codes.
 
 Start with Grok Build if `grok` is on PATH: `grok agent stdio`.
 Fallback order: `kimi acp` → `npx -y @agentclientprotocol/claude-agent-acp` → `cursor-agent acp`.
@@ -115,24 +134,40 @@ Handshake:
 
 Permission mode v0: `repo-only` (allow read/write under cwd, deny else; shell = ask or deny in `--yes` CI).
 
+Next: Slice 3.
+
 #### Slice 3: Session + Audit
+
+Read first: SCHEMA SessionRecord, SCHEMA Audit event, HLD Session Store, HLD Audit Log.
 
 - `~/.ravand/sessions/<id>.json` as in SCHEMA.md
 - append-only `~/.ravand/audit.jsonl`
 - events: `run.started`, `run.ended`, `agent.selected`, `agent.denied`, `permission.allow`, `permission.deny`, `auth.missing`
 
+Next: Slice 4.
+
 #### Slice 4: Overflow
+
+Read first: HLD run path step 8, SCHEMA `overflowOf`, audit type `agent.overflow`.
 
 If Runtime ends with rate_limit / quota / crash AND policy.overflow is set AND overflow not in deny: start a second run. Audit `agent.overflow`. Same task_id, field `overflowOf`.
 
+Next: Slice 5.
+
 #### Slice 5: Observability hooks (no vendor backend required)
+
+Read first: SCHEMA OTel.
 
 - Emit OTel spans if `OTEL_EXPORTER_OTLP_ENDPOINT` is set; else no-op.
 - Root span: `invoke_agent` with attributes in SCHEMA.md
 - Child: `execute_tool` per tool call
 - Metrics counters in-process even without OTLP: duration, result enum
 
+Next: Slice 6, only after `ravand run` works on one machine.
+
 #### Slice 6: PGMQ (feature-flagged)
+
+Read first: HLD Dispatcher, Worker, PGMQ. SCHEMA TaskMessage, WorkerInfo.
 
 Only if `RAVAND_PGMQ_URL` is set.
 
@@ -167,3 +202,5 @@ Only if `RAVAND_PGMQ_URL` is set.
 
 Prefer wrapping `@agentclientprotocol/sdk` and copying acpx’s spawn/session shape over writing JSON-RPC by hand.
 Reference: https://github.com/openclaw/acpx (MIT), https://agentclientprotocol.com
+
+Reading order lives in [docs/README.md](docs/README.md).

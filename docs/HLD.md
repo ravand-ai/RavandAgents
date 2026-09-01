@@ -1,5 +1,10 @@
 # HLD: Ravand Agents services
 
+Reading: [Docs map](README.md)
+
+Previous: [Roadmap](ROADMAP.md)
+Next: [Schema](SCHEMA.md)
+
 Status: v0.2  
 Style: local-first, then Postgres/PGMQ workers  
 I/O with agents: ACP v1 JSON-RPC over stdio only
@@ -183,3 +188,5 @@ Idempotency: `task_id`. Session Store rejects second start if status is running|
 - v0: single binary on the laptop that has the CLIs
 - v2: Gateway + Postgres; workers on machines that have both the repo and the logins
 - Never SaaS that stores company Claude/Grok cookies
+
+Next: [Schema](SCHEMA.md)

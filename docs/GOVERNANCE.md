@@ -1,5 +1,10 @@
 # Governance and ops mapping
 
+Reading: [Docs map](README.md)
+
+Previous: [Schema](SCHEMA.md)
+Next: [examples/harness.toml](../examples/harness.toml), then [AGENTS.md](../AGENTS.md)
+
 Ravand Agents is not a GRC product and not an AIOps suite.
 This file is the gap list so features are added on purpose.
 
@@ -52,3 +57,5 @@ This file is the gap list so features are added on purpose.
 | customer | work only |
 
 Never put customer prompts on a personal profile HOME.
+
+Next: [examples/harness.toml](../examples/harness.toml), then [AGENTS.md](../AGENTS.md) from "Adopted product rules".
