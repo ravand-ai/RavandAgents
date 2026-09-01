@@ -10,6 +10,7 @@ from pathlib import Path
 from ravand_policy import PolicyDenied, UnknownAgent, resolve
 from ravand_profile import ensure_profile_home
 from ravand_registry import login_hint
+from ravand_cli.status import run_status
 from ravand_runtime import run_prompt
 
 NOT_IMPLEMENTED = "not implemented"
@@ -115,6 +116,8 @@ def main(argv: list[str] | None = None) -> int:
         return _login(args)
     if args.command == "run":
         return _run(args)
+    if args.command == "status":
+        return run_status(Path.cwd())
     print(NOT_IMPLEMENTED, file=sys.stderr)
     return 2
 
