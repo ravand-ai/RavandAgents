@@ -262,6 +262,7 @@ type SessionEvent = {
   type:
     | "run.started"
     | "text.delta"
+    | "thinking.delta"
     | "tool.call"
     | "tool.result"
     | "permission.ask"
@@ -275,7 +276,7 @@ type SessionEvent = {
 }
 ```
 
-No secret fields. No cookie paths. `text.delta` is assistant text only.
+No secret fields. No cookie paths. `text.delta` is assistant text only. `thinking.delta` is the agent's thought stream. `tool.call` / `tool.result` carry a short title, never raw cookie or token fields.
 
 ## Plugin manifest
 

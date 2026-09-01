@@ -169,12 +169,60 @@ def main() -> None:
                     {"jsonrpc": "2.0", "id": mid, "result": {"stopReason": "end_turn"}}
                 )
             else:
+                sid = params.get("sessionId")
                 _write(
                     {
                         "jsonrpc": "2.0",
                         "method": "session/update",
                         "params": {
-                            "sessionId": params.get("sessionId"),
+                            "sessionId": sid,
+                            "update": {
+                                "sessionUpdate": "agent_thought_chunk",
+                                "content": {
+                                    "type": "text",
+                                    "text": "planning the reply",
+                                },
+                            },
+                        },
+                    }
+                )
+                _write(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "session/update",
+                        "params": {
+                            "sessionId": sid,
+                            "update": {
+                                "sessionUpdate": "tool_call",
+                                "toolCallId": "t-read",
+                                "title": "Read AGENTS.md",
+                                "kind": "read",
+                                "status": "in_progress",
+                            },
+                        },
+                    }
+                )
+                _write(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "session/update",
+                        "params": {
+                            "sessionId": sid,
+                            "update": {
+                                "sessionUpdate": "tool_call_update",
+                                "toolCallId": "t-read",
+                                "title": "Read AGENTS.md",
+                                "status": "completed",
+                            },
+                        },
+                    }
+                )
+                _write(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "session/update",
+                        "params": {
+                            "sessionId": sid,
                             "update": {
                                 "sessionUpdate": "agent_message_chunk",
                                 "content": {"type": "text", "text": "hello-from-fake"},
