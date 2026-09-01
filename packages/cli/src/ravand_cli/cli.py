@@ -14,7 +14,7 @@ from ravand_cli.ask import confirm_permission, confirm_plan, should_ask
 from ravand_cli.status import run_status
 from ravand_cli.tui import run_tui
 from ravand_plugins import FailClosed as PluginFailClosed, PluginHost
-from ravand_runtime import audit_agent_denied, run_prompt, steer_prompt
+from ravand_runtime import audit_agent_denied, run_prompt, serve_acp, steer_prompt
 from ravand_runtime.plan import plan_mode_active
 
 NOT_IMPLEMENTED = "not implemented"
@@ -49,6 +49,9 @@ def _parser() -> argparse.ArgumentParser:
     plugin_add = plugin_sub.add_parser("add", help="install a plugin from a path")
     plugin_add.add_argument("source", type=Path)
     plugin_sub.add_parser("list", help="list installed plugins")
+    serve = sub.add_parser("serve", help="long-running services")
+    serve_sub = serve.add_subparsers(dest="serve_command")
+    serve_sub.add_parser("acp", help="stdio ACP server (agent ravand)")
     return parser
 
 
@@ -203,6 +206,11 @@ def main(argv: list[str] | None = None) -> int:
             return _plugin_add(args)
         if args.plugin_command == "list":
             return _plugin_list()
+        print(NOT_IMPLEMENTED, file=sys.stderr)
+        return 2
+    if args.command == "serve":
+        if args.serve_command == "acp":
+            return serve_acp()
         print(NOT_IMPLEMENTED, file=sys.stderr)
         return 2
     print(NOT_IMPLEMENTED, file=sys.stderr)

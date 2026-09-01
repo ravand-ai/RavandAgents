@@ -275,6 +275,7 @@ def _attempt_run(
     yes: bool = False,
     cancel: threading.Event | None = None,
     overflow_of: str | None = None,
+    acp_forward: Callable[[dict[str, Any]], None] | None = None,
 ) -> tuple[int, str, str | None, bool]:
     session_acp_id: str | None = None
     status = "error"
@@ -303,6 +304,8 @@ def _attempt_run(
         session_acp_id = session.get("sessionId")
 
         def on_update(msg: dict[str, Any]) -> None:
+            if acp_forward is not None:
+                acp_forward(msg)
             params = msg.get("params") or {}
             update = params.get("update") if isinstance(params, dict) else None
             if not isinstance(update, dict):
@@ -555,6 +558,7 @@ def run_prompt(
     yes: bool = False,
     cancel: threading.Event | None = None,
     tracer: Tracer | None = None,
+    acp_forward: Callable[[dict[str, Any]], None] | None = None,
 ) -> int:
     cwd = cwd.resolve()
     task_id = str(uuid.uuid4())
@@ -630,6 +634,7 @@ def run_prompt(
         ask_plan=ask_plan,
         yes=yes,
         cancel=cancel,
+        acp_forward=acp_forward,
     )
     if status == "ok" and memory_store is not None:
         memory_store.write(prompt)
@@ -717,5 +722,6 @@ def run_prompt(
         yes=yes,
         cancel=cancel,
         overflow_of=record.id,
+        acp_forward=acp_forward,
     )
     return overflow_exit
