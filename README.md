@@ -59,6 +59,7 @@ docs/
 examples/
   harness.toml
   policy.user.toml
+pyproject.toml            # uv, Python 3.12+ (added in Slice 0)
 packages/                 # implement here; empty until generated
   acp-client/
   policy/

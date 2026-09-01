@@ -67,6 +67,10 @@ If a subagent needs more grant than the parent, fail closed. Do not prompt-up.
 
 Until those tests exist, every PR description must say which of them the change does not yet cover.
 
+Write the failing pytest first. A PR with production code and no new or updated test is not ready.
+
+If review or CodeQL finds a new problem that is not this issue, open a new GitHub issue. Do not expand the branch.
+
 ## Reporting
 
 A security miss is a blocking issue. Do not fold it into a feature issue. Label `security`.

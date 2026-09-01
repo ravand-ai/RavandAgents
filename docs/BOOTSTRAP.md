@@ -45,7 +45,14 @@ Assign **one issue to one CLI**. Do not run three builders on the same files.
 4. GitHub issues with acceptance tests (this plan's issue list).
 5. `AGENTS.md` slices unchanged in order.
 
-Language lock for v0: **TypeScript, Node 22+, pnpm**. Do not start a second language.
+Language lock for v0: **Python 3.12+ and uv**. Do not start a second language.
+
+Process lock:
+
+- TDD. Failing pytest first, then code.
+- One GitHub issue → one branch `N-short-description` → one PR.
+- If you discover extra work, open a new GitHub issue. Do not grow the current branch.
+- CodeQL on push and PR. A CodeQL alert becomes a new issue, not a silent extra commit on the wrong branch.
 
 ## Phases
 
@@ -60,7 +67,7 @@ Exit: an issue exists for every v0 slice. This repo has a policy file.
 
 ### Phase B: policy without ACP (Slice 0–1)
 
-- `ravand` bin
+- `ravand` bin (`uv run ravand`)
 - `ravand which` JSON
 - Profile dirs created, never filled with copied cookies
 - Tests: profile mismatch, deny list, unknown agent
@@ -116,9 +123,11 @@ Paste into Grok, Kimi, or Cursor:
 ```
 You are the builder for Ravand Agents. Read AGENTS.md, docs/SECURITY.md, docs/BOOTSTRAP.md, and the GitHub issue.
 
-Implement only that issue. Write failing tests first for policy and permission.
+Implement only that issue. Branch name: N-short-description from the issue number.
+TDD: write a failing pytest first, run it, then write code. Use Python 3.12+ and uv. Do not add Node or TypeScript.
+If you find extra work, open a new GitHub issue. Do not grow this branch.
 Do not read ~/.ravand/profiles cookie files. Do not add secrets. Do not start the next slice.
-Run the verify commands in AGENTS.md plus the issue's tests.
+Run: uv run pytest, plus AGENTS.md verify, plus CodeQL locally if available.
 Do not commit unless the issue says to. Do not push.
 ```
 

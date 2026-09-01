@@ -11,9 +11,10 @@ The task protocol lives in the installed task-protocol skill.
 
 ## Stack
 
-- Language: TypeScript preferred, or Go
+- Language: Python 3.12+
+- Package manager: uv
 - Framework: none yet
-- Test runner: unknown
+- Test runner: pytest
 
 ## Verify commands
 
@@ -31,7 +32,15 @@ Confirm these files exist:
 test -f docs/README.md && test -f docs/HLD.md && test -f AGENTS.md && test -f examples/harness.toml && echo 'core files present'
 ```
 
-Pass: leftover-name searches empty, nested design-pack directory absent, core files present.
+When `pyproject.toml` exists, also run:
+
+```
+uv run pytest
+```
+
+Pass: leftover-name searches empty, nested design-pack directory absent, core files present, pytest green when the suite exists.
+
+CodeQL: GitHub code scanning on every push and pull request to `main` (`.github/workflows/codeql.yml`). A new CodeQL finding is a new GitHub issue. Do not expand the current branch to “fix everything.”
 
 ## Integration branches
 
@@ -43,9 +52,10 @@ Do not push directly to a branch in this table.
 
 ## Ticket and branch
 
-- Ticket key format: none
-- Branch name format: `short-description`
-- Commit message format: `type: description` (no ticket prefix)
+- Ticket key format: GitHub issue number (`#12`)
+- Branch name format: `N-short-description` (example: `2-slice-0-skeleton`)
+- Commit message format: `type: description (#N)`
+- One GitHub issue → one branch → one PR. If you find extra work, open a new issue. Do not pile it onto the current branch.
 
 ## Task protocol
 
@@ -85,7 +95,7 @@ v0 is **one process**. Do not stand up a bus or Postgres until v2 flags exist.
 - If a subscription CLI needs a login, refuse and print the vendor login command.
 - Work profile MUST NOT run on a repo whose policy says `profile = "personal"` and the reverse. Customer classification never uses a personal account.
 - If Policy, Permission Broker, or account resolution cannot decide: **fail closed**. Do not spawn.
-- Do not invent an ACP dialect. Use `@agentclientprotocol/sdk` (TypeScript) or the official Python/Rust SDK.
+- Do not invent an ACP dialect. Use the official Python ACP SDK.
 - Do not wrap vendor CLI HTTP APIs. Native loop (later) talks to the provider only through the named account plugin.
 - Do not scrape TUI output. Structured ACP or the native loop plugin only.
 - Do not add the Cordis package as the kernel. Do not fork dsh.
@@ -94,16 +104,18 @@ v0 is **one process**. Do not stand up a bus or Postgres until v2 flags exist.
 
 ### Implementation order (do not skip)
 
-Read [docs/README.md](docs/README.md) build path before Slice 0. One slice per change.
+Read [docs/README.md](docs/README.md) build path before Slice 0. One GitHub issue per branch. TDD: write the failing pytest first, then the code.
 
 #### Slice 0: skeleton
 
 Read first: [README.md](README.md), HLD services list.
 
-- TypeScript (preferred) or Go. Node 22+.
-- Package manager: pnpm if TS.
-- `packages/cli` bin: `ravand`
+- Python 3.12+, uv, `pyproject.toml` at the repo root.
+- uv workspace. Packages match HLD service names under `packages/`.
+- `packages/cli` console script: `ravand`
+- pytest. First test: `ravand --help` or missing command exits non-zero with `not implemented`.
 - Commands that print “not implemented” except `ravand which` after slice 1.
+- No Node, pnpm, or TypeScript app code.
 
 Next: Slice 1.
 
@@ -115,7 +127,7 @@ Read first: [docs/SCHEMA.md](docs/SCHEMA.md), [examples/harness.toml](examples/h
 - `ravand which` prints JSON: `{ profile, agent, overflow, permissions, home, command }`
 - `ravand login <profile>` prints login hints per agent in that profile
 - Isolated dirs: create `~/.ravand/profiles/<name>` if missing
-- Unit tests for deny list, profile mismatch, missing harness.toml fallback
+- pytest first: deny list, profile mismatch, missing harness.toml fallback, unknown agent id
 
 Next: Slice 2.
 
@@ -186,11 +198,13 @@ Only if a bus is configured. Default driver is PGMQ.
 ### Code style
 
 - Small packages matching `docs/HLD.md` service names
-- No catch-all `utils.ts` for policy
+- No catch-all `utils.py` for policy
 - Failures: typed errors `PolicyDenied`, `AuthRequired`, `CapabilityMiss`, `FailClosed`
 - Exit codes: 0 ok, 2 auth, 3 policy deny, 4 spawn fail, 5 agent error
 
-### Tests to write first
+### Tests to write first (TDD)
+
+For every GitHub issue: add or change a pytest that fails, run it, then write the code. Do not write production code before the failing test.
 
 1. Policy: personal repo + work override flag → denied
 2. Permission: write `/etc/passwd` → deny
@@ -207,7 +221,7 @@ Only if a bus is configured. Default driver is PGMQ.
 
 ### When stuck
 
-Prefer wrapping `@agentclientprotocol/sdk` and copying acpx’s spawn/session shape over writing JSON-RPC by hand.
+Prefer the official Python ACP SDK and acpx’s spawn/session shape over writing JSON-RPC by hand.
 Reference: https://github.com/openclaw/acpx (MIT), https://agentclientprotocol.com
 
 Reading order lives in [docs/README.md](docs/README.md).
