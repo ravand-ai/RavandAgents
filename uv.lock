@@ -10,6 +10,7 @@ members = [
     "ravand-hooks",
     "ravand-memory",
     "ravand-permissions",
+    "ravand-plugins",
     "ravand-policy",
     "ravand-profile",
     "ravand-registry",
@@ -148,6 +149,7 @@ dev = [
     { name = "ravand-audit" },
     { name = "ravand-hooks" },
     { name = "ravand-memory" },
+    { name = "ravand-plugins" },
     { name = "ravand-sessions" },
 ]
 
@@ -160,6 +162,7 @@ dev = [
     { name = "ravand-audit", editable = "packages/audit" },
     { name = "ravand-hooks", editable = "packages/hooks" },
     { name = "ravand-memory", editable = "packages/memory" },
+    { name = "ravand-plugins", editable = "packages/plugins" },
     { name = "ravand-sessions", editable = "packages/sessions" },
 ]
 
@@ -173,6 +176,7 @@ name = "ravand-cli"
 version = "0.0.0"
 source = { editable = "packages/cli" }
 dependencies = [
+    { name = "ravand-plugins" },
     { name = "ravand-policy" },
     { name = "ravand-profile" },
     { name = "ravand-registry" },
@@ -182,6 +186,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ravand-plugins", editable = "packages/plugins" },
     { name = "ravand-policy", editable = "packages/policy" },
     { name = "ravand-profile", editable = "packages/profile" },
     { name = "ravand-registry", editable = "packages/registry" },
@@ -203,6 +208,11 @@ source = { editable = "packages/memory" }
 name = "ravand-permissions"
 version = "0.0.0"
 source = { editable = "packages/permissions" }
+
+[[package]]
+name = "ravand-plugins"
+version = "0.0.0"
+source = { editable = "packages/plugins" }
 
 [[package]]
 name = "ravand-policy"

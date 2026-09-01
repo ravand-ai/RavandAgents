@@ -8,11 +8,15 @@ dependencies = [
     "ravand-profile",
     "ravand-registry",
     "ravand-runtime",
+    "ravand-plugins",
     "textual>=8,<9",
 ]
 
 [project.scripts]
 ravand = "ravand_cli.cli:main"
+
+[tool.uv.sources]
+ravand-plugins = { workspace = true }
 
 [build-system]
 requires = ["uv_build>=0.11.8,<0.12.0"]

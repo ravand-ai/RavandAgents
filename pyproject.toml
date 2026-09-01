@@ -15,6 +15,7 @@ dev = [
     "ravand-audit",
     "ravand-hooks",
     "ravand-memory",
+    "ravand-plugins",
 ]
 
 [tool.uv.workspace]
@@ -31,6 +32,7 @@ ravand-sessions = { workspace = true }
 ravand-audit = { workspace = true }
 ravand-hooks = { workspace = true }
 ravand-memory = { workspace = true }
+ravand-plugins = { workspace = true }
 
 [tool.uv]
 package = false
