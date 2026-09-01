@@ -226,3 +226,99 @@ def test_run_rejects_denied_account(tmp_path: Path) -> None:
         check=False,
     )
     assert result.returncode == 3
+
+
+def _write_vault_secret(home: Path, ref: str, body: str = "not-a-token") -> None:
+    assert ref.startswith("vault:")
+    path = home / "secrets" / ref.removeprefix("vault:")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(body, encoding="utf-8")
+
+
+def test_which_resolves_named_api_account_with_secret_ref(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    ref = "vault:work/claude-api"
+    _write_user_config(
+        home,
+        accounts={
+            "claude-api": {
+                "kind": "api",
+                "provider": "anthropic",
+                "secret_ref": ref,
+            }
+        },
+    )
+    _write_vault_secret(home, ref)
+    repo = tmp_path / "repo"
+    _write_harness(repo, accounts_allow=["claude-api"])
+
+    result = _which(repo, home, extra=["--account", "claude-api"])
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert data["account"] == "claude-api"
+    assert data["kind"] == "api"
+    blob = result.stdout + result.stderr
+    assert "not-a-token" not in blob
+    assert "sk-" not in blob
+
+
+def test_api_account_missing_secret_ref_is_policy_denied(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    _write_user_config(
+        home,
+        accounts={"claude-api": {"kind": "api", "provider": "anthropic"}},
+    )
+    repo = tmp_path / "repo"
+    _write_harness(repo, accounts_allow=["claude-api"])
+
+    result = _which(repo, home, extra=["--account", "claude-api"])
+    assert result.returncode == 3
+
+
+def test_api_account_missing_secret_file_is_policy_denied(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    _write_user_config(
+        home,
+        accounts={
+            "claude-api": {
+                "kind": "api",
+                "secret_ref": "vault:work/claude-api",
+            }
+        },
+    )
+    repo = tmp_path / "repo"
+    _write_harness(repo, accounts_allow=["claude-api"])
+
+    result = _which(repo, home, extra=["--account", "claude-api"])
+    assert result.returncode == 3
+
+
+def test_run_does_not_spawn_acp_for_api_account(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    ref = "vault:work/claude-api"
+    _write_user_config(
+        home,
+        accounts={
+            "claude-api": {
+                "kind": "api",
+                "secret_ref": ref,
+            }
+        },
+    )
+    _write_vault_secret(home, ref)
+    repo = tmp_path / "repo"
+    _write_harness(repo, accounts_allow=["claude-api"])
+    env = os.environ.copy()
+    env["RAVAND_HOME"] = str(home)
+
+    result = subprocess.run(
+        ["uv", "run", "ravand", "run", "--account", "claude-api", "hi"],
+        cwd=repo,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 3
+    blob = result.stdout + result.stderr
+    assert "not-a-token" not in blob
