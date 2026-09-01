@@ -41,14 +41,17 @@ def _run(
     home: Path,
     prompt: str,
     extra_env: dict[str, str] | None = None,
+    extra_args: list[str] | None = None,
+    stdin: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["RAVAND_HOME"] = str(home)
     env.update(extra_env or {})
     return subprocess.run(
-        ["uv", "run", "ravand", "run", "--format", "jsonl", prompt],
+        ["uv", "run", "ravand", "run", "--format", "jsonl", *(extra_args or []), prompt],
         cwd=repo,
         env=env,
+        input=stdin,
         capture_output=True,
         text=True,
         check=False,
@@ -94,6 +97,41 @@ def test_session_update_list_content_after_permission_does_not_crash(
     assert any(e.get("text") == "fetched-ok" for e in events)
     assert events[-1].get("type") == "run.ended"
     assert events[-1].get("status") == "ok"
+
+
+def test_human_ask_yes_allows_fetch(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    _harness(repo)
+    result = _run(
+        repo,
+        home,
+        "fetch https://example.com",
+        extra_env={"RAVAND_ASK": "1"},
+        stdin="y\n",
+    )
+    assert result.returncode == 0, result.stderr
+    events = _events(result.stdout)
+    assert any(e.get("text") == "fetched-ok" for e in events)
+    assert "allow" in result.stderr.lower()
+
+
+def test_human_ask_no_denies_fetch(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    _harness(repo)
+    result = _run(
+        repo,
+        home,
+        "fetch https://example.com",
+        extra_env={"RAVAND_ASK": "1"},
+        stdin="n\n",
+    )
+    assert result.returncode == 0, result.stderr
+    events = _events(result.stdout)
+    assert not any(e.get("text") == "fetched-ok" for e in events)
+    types = [e.get("type") for e in events]
+    assert "permission.ask" in types
 
 
 def test_write_passwd_is_denied(tmp_path: Path) -> None:
