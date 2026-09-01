@@ -35,7 +35,7 @@ Do not wait for the native loop. The first dogfood is ACP spawn of tools we alre
 | Cursor (`cursor-agent`) | CLI UX, `ravand status`, editor-shaped diffs | third backend |
 | Human | orchestrator, merge, security-gate when no second model | never skip |
 
-Assign **one issue to one CLI**. Do not run three builders on the same files.
+Assign **one issue to one CLI**. Grok, Kimi, and Cursor run **at the same time** when their issues do not share files. Do not run two builders on the same path.
 
 ## Contracts to put on disk first (before Slice 0 code)
 
@@ -115,6 +115,28 @@ Rules:
 - If secret-scan fails, builder output is discarded.
 - Subagent grant ≤ parent grant.
 - Prompt for an issue must include: issue URL, SECURITY.md, AGENTS.md slice, "do not implement the next slice."
+- Concurrent builders: only issues in the same wave, and only disjoint file sets.
+- No new PyPI package unless the failing test cannot pass with the stdlib (pytest is the Slice 0 exception).
+
+## Concurrent waves
+
+Start the next wave when the previous wave's PRs are merged (or the issue is not blocked).
+
+| Wave | Parallel issues | CLI | Owns (do not touch others) |
+|------|-----------------|-----|----------------------------|
+| 1 | #2 skeleton | Grok | `pyproject.toml`, `uv.lock`, `packages/cli`, `packages/*/pyproject.toml` stubs |
+| 1 | #1 security tests | Kimi | `tests/security/` only |
+| 1 | docs already done | Cursor idle, or review #2 | no product files |
+| 2 | #3 `ravand which` | Kimi | `packages/policy`, `packages/profile`, `packages/registry` |
+| 2 | #7 status (tests first) | Cursor | `tests/status/` until #3 lands, then `packages/cli` status command only |
+| 3 | #4 grok ACP | Grok | `packages/runtime`, `packages/permissions` |
+| 3 | #7 finish status | Cursor | `packages/cli` status only |
+| 4 | #5 session + audit | Cursor | `packages/sessions`, `packages/audit` |
+| 4 | #8 kimi + cursor backends | Grok | `packages/registry` agent commands only |
+| 5 | #6 overflow | Kimi | `packages/runtime` overflow only |
+| 6 | #9 dogfood | Grok via `ravand run` | one tiny docs file |
+
+If two waves would edit `packages/cli` or `packages/runtime` at once, wait. Open a new issue for leftover work instead of stretching a wave.
 
 ## Issue prompt template
 
@@ -125,6 +147,8 @@ You are the builder for Ravand Agents. Read AGENTS.md, docs/SECURITY.md, docs/BO
 
 Implement only that issue. Branch name: N-short-description from the issue number.
 TDD: write a failing pytest first, run it, then write code. Use Python 3.12+ and uv. Do not add Node or TypeScript.
+Add a dependency only if the failing test cannot pass with the stdlib. Slice 0 may add pytest. ACP SDK only in Slice 2.
+Work only the files this issue owns (BOOTSTRAP concurrent waves). Grok, Kimi, and Cursor may run other issues in the same wave on disjoint paths.
 If you find extra work, open a new GitHub issue. Do not grow this branch.
 Do not read ~/.ravand/profiles cookie files. Do not add secrets. Do not start the next slice.
 Run: uv run pytest, plus AGENTS.md verify, plus CodeQL locally if available.
@@ -133,7 +157,8 @@ Do not commit unless the issue says to. Do not push.
 
 ## GitHub issues to open
 
-Open these in order. Each body must list parent issue, assigned CLI, and tests.
+Issues exist: https://github.com/ravand-ai/RavandAgents/issues  
+Run them by **wave**, not as a single file. Each body must list parent issue, assigned CLI, and tests.
 
 1. Security contract in CI mindset (this file + SECURITY.md already). Remaining: test fixtures for deny.
 2. Slice 0 skeleton

@@ -31,6 +31,8 @@ Subagents: tester, secret-scan.
 
 - Grow this branch with extra work. Open a new issue instead.
 - Secrets, cookie files, vendor HTTP wrap.
+- Add a PyPI dependency unless a failing test cannot pass with the stdlib.
+- Edit files another open wave already owns (see `docs/BOOTSTRAP.md` concurrent waves).
 
 ## Exit
 

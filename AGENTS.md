@@ -101,6 +101,7 @@ v0 is **one process**. Do not stand up a bus or Postgres until v2 flags exist.
 - Do not add the Cordis package as the kernel. Do not fork dsh.
 - Do not add a second plugin runtime. The kernel is the plugin host.
 - Do not read memory across a denied isolation scope.
+- Do not add a dependency unless a failing test cannot pass with the stdlib. Slice 0 may add pytest (dev). The ACP SDK is allowed only in Slice 2. No pydantic, httpx, typer, or extra CLI frameworks unless a later issue names them.
 
 ### Implementation order (do not skip)
 
@@ -116,6 +117,7 @@ Read first: [README.md](README.md), HLD services list.
 - pytest. First test: `ravand --help` or missing command exits non-zero with `not implemented`.
 - Commands that print “not implemented” except `ravand which` after slice 1.
 - No Node, pnpm, or TypeScript app code.
+- Dependencies: pytest (dev) only. Nothing else.
 
 Next: Slice 1.
 
