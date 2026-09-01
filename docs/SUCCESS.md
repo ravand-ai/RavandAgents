@@ -74,7 +74,7 @@ BSL with a $250k grant is enough to talk to a company. Do not spend time on cont
 
 ## Next
 
-Follow [ROADMAP.md](ROADMAP.md) leftover v0 only. Do not open Slice 6, workflows, a plugin registry, or more TUI tickets until dogfood #9 and the four checks below hold.
+Follow [ROADMAP.md](ROADMAP.md) leftover v0 only. Leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not open Slice 6, workflows, a plugin registry, or more TUI tickets until those four hold.
 
 Dogfood plan: [SECURITY.md](SECURITY.md) then [BOOTSTRAP.md](BOOTSTRAP.md).
 
