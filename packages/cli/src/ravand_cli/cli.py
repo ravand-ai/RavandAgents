@@ -24,9 +24,11 @@ def _parser() -> argparse.ArgumentParser:
     which = sub.add_parser("which", help="resolve agent and profile for cwd")
     which.add_argument("--profile", dest="profile_override")
     which.add_argument("-a", "--agent", dest="agent_override")
+    which.add_argument("--account", dest="account_override")
     run = sub.add_parser("run", help="spawn the selected ACP agent")
     run.add_argument("prompt", nargs="?")
     run.add_argument("-a", "--agent", dest="agent_override")
+    run.add_argument("--account", dest="account_override")
     run.add_argument("--format", choices=["jsonl", "text"], default="jsonl")
     run.add_argument(
         "--yes",
@@ -46,6 +48,7 @@ def _which(args: argparse.Namespace) -> int:
             Path.cwd(),
             profile_override=getattr(args, "profile_override", None),
             agent_override=getattr(args, "agent_override", None),
+            account_override=getattr(args, "account_override", None),
         )
     except PolicyDenied as exc:
         print(str(exc), file=sys.stderr)
@@ -57,6 +60,7 @@ def _which(args: argparse.Namespace) -> int:
     payload = {
         "profile": policy.profile,
         "agent": policy.agent,
+        "account": policy.account,
         "overflow": policy.overflow_agent or "",
         "permissions": policy.permissions,
         "home": policy.home,
@@ -76,6 +80,7 @@ def _run(args: argparse.Namespace) -> int:
         policy = resolve(
             Path.cwd(),
             agent_override=getattr(args, "agent_override", None),
+            account_override=getattr(args, "account_override", None),
         )
     except PolicyDenied as exc:
         audit_agent_denied(str(exc), cwd=Path.cwd())

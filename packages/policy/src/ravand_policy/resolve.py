@@ -29,6 +29,7 @@ class ResolvedPolicy:
     command: list[str]
     mcp: list[dict] = field(default_factory=list)
     agent: str = ""
+    account: str = ""
 
 
 def _load_toml(path: Path) -> dict:
@@ -43,11 +44,53 @@ def _user_config(home: Path) -> dict:
     return _load_toml(path)
 
 
+def _resolve_account(
+    account_id: str,
+    *,
+    user: dict,
+    harness: dict,
+    agent: str,
+) -> str:
+    accounts_cfg = user.get("accounts") or {}
+    if not isinstance(accounts_cfg, dict):
+        raise PolicyDenied("user accounts table is invalid")
+
+    record = accounts_cfg.get(account_id)
+    if not isinstance(record, dict):
+        raise PolicyDenied(f"unknown account {account_id!r}")
+
+    kind = str(record.get("kind", ""))
+    if kind == "api":
+        raise PolicyDenied(f"account {account_id!r} kind api is not supported")
+    if kind != "cli":
+        raise PolicyDenied(f"account {account_id!r} has invalid kind")
+
+    account_agent = str(record.get("agent", ""))
+    if account_agent != agent:
+        raise PolicyDenied(
+            f"account {account_id!r} agent {account_agent!r} "
+            f"does not match {agent!r}"
+        )
+
+    harness_accounts = harness.get("accounts") or {}
+    if isinstance(harness_accounts, dict):
+        deny = [str(x) for x in harness_accounts.get("deny", [])]
+        if account_id in deny:
+            raise PolicyDenied(f"account {account_id!r} is denied")
+        if "allow" in harness_accounts:
+            allow = [str(x) for x in harness_accounts.get("allow", [])]
+            if account_id not in allow:
+                raise PolicyDenied(f"account {account_id!r} is not allowed")
+
+    return account_id
+
+
 def resolve(
     cwd: Path,
     *,
     profile_override: str | None = None,
     agent_override: str | None = None,
+    account_override: str | None = None,
 ) -> ResolvedPolicy:
     cwd = cwd.resolve()
     harness_path = cwd / "harness.toml"
@@ -106,6 +149,15 @@ def resolve(
         raise UnknownAgent(f"agent {agent!r} has no command")
     command = [str(x) for x in spec["command"]]
 
+    account = ""
+    if account_override:
+        account = _resolve_account(
+            account_override,
+            user=user,
+            harness=harness,
+            agent=agent,
+        )
+
     profile_home = home_root / "profiles" / profile
     return ResolvedPolicy(
         profile=profile,
@@ -117,4 +169,5 @@ def resolve(
         classification=classification,
         command=command,
         agent=agent,
+        account=account,
     )
