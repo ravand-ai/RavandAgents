@@ -157,3 +157,38 @@ def test_textual_app_shows_tool_progress() -> None:
     asyncio.run(_go())
     assert "Read AGENTS.md" in blob
     assert "thinking" in blob.lower()
+
+
+def test_textual_app_coalesces_thinking_words() -> None:
+    from ravand_cli.tui import RavandApp, Turn
+
+    def fake_runner(policy, prompt, *, cwd, sink, ask, yes):
+        sink({"type": "thinking.delta", "text": "The"})
+        sink({"type": "thinking.delta", "text": " user"})
+        sink({"type": "thinking.delta", "text": " wants"})
+        sink({"type": "tool.call", "tool": "Read AGENTS.md", "status": "in_progress"})
+        sink({"type": "text.delta", "text": "done"})
+        sink({"type": "run.ended", "status": "ok"})
+        return 0
+
+    app = RavandApp(cwd=ROOT, runner=fake_runner)
+    think_bodies: list[str] = []
+
+    async def _go() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            box = app.query_one("#prompt")
+            box.load_text("coalesce")
+            app.action_submit_prompt()
+            for _ in range(40):
+                await pilot.pause(0.05)
+                think_bodies.clear()
+                for child in app.query_one("#transcript").children:
+                    if isinstance(child, Turn) and "turn-think" in child.classes:
+                        think_bodies.append(child.body)
+                if think_bodies and "user" in think_bodies[0]:
+                    break
+
+    asyncio.run(_go())
+    assert len(think_bodies) == 1, think_bodies
+    assert "The user wants" in think_bodies[0]
