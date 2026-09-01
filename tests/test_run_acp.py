@@ -78,6 +78,24 @@ def test_run_streams_jsonl_without_secrets(tmp_path: Path) -> None:
     assert any(e.get("text") == "hello-from-fake" for e in events)
 
 
+def test_session_update_list_content_after_permission_does_not_crash(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    _harness(repo)
+    result = _run(repo, home, "fetch https://example.com")
+    assert result.returncode == 0, result.stderr
+    assert "list' object has no attribute 'get'" not in result.stderr
+    events = _events(result.stdout)
+    types = [e.get("type") for e in events]
+    assert "permission.ask" in types
+    assert "text.delta" in types
+    assert any(e.get("text") == "fetched-ok" for e in events)
+    assert events[-1].get("type") == "run.ended"
+    assert events[-1].get("status") == "ok"
+
+
 def test_write_passwd_is_denied(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     home = tmp_path / "home"

@@ -126,15 +126,32 @@ def _attempt_run(
         session_acp_id = session.get("sessionId")
 
         def on_update(msg: dict[str, Any]) -> None:
-            update = (msg.get("params") or {}).get("update") or {}
-            content = update.get("content") or {}
-            text = content.get("text")
-            if text:
-                _emit(sink, {"type": "text.delta", "text": text}, task_id=task_id)
+            params = msg.get("params") or {}
+            update = params.get("update") if isinstance(params, dict) else None
+            if not isinstance(update, dict):
+                return
+            content = update.get("content")
+            blocks: list[Any]
+            if isinstance(content, dict):
+                blocks = [content]
+            elif isinstance(content, list):
+                blocks = content
+            else:
+                blocks = []
+            for block in blocks:
+                if not isinstance(block, dict):
+                    continue
+                text = block.get("text")
+                if text:
+                    _emit(sink, {"type": "text.delta", "text": text}, task_id=task_id)
 
         def on_permission(msg: dict[str, Any]) -> dict[str, Any]:
             params = msg.get("params") or {}
+            if not isinstance(params, dict):
+                params = {}
             tool = params.get("toolCall") or {}
+            if not isinstance(tool, dict):
+                tool = {}
             decision = decide_repo_only(tool, str(cwd))
             detail = str(tool.get("title") or tool.get("kind") or "tool")
             audit_type = "permission.deny" if decision == "deny" else "permission.allow"
