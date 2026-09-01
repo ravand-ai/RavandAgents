@@ -11,7 +11,9 @@ Ravand Agents is still design-only. There is no CLI to run. Read to learn what w
 | Learn the product | [../README.md](../README.md) | This map, then the design path below |
 | Walk the design in order | This file | Step 1 of the design path |
 | Know v0 vs later | [ROADMAP.md](ROADMAP.md) | [HLD.md](HLD.md) |
+| Know what to ship first | [SUCCESS.md](SUCCESS.md) | [ROADMAP.md](ROADMAP.md) |
 | Implement a slice | [../AGENTS.md](../AGENTS.md) | The slice table in this file |
+| Build this repo with Grok/Kimi/Cursor | [SECURITY.md](SECURITY.md) | [BOOTSTRAP.md](BOOTSTRAP.md) |
 | See a real policy file | [../examples/harness.toml](../examples/harness.toml) | [SCHEMA.md](SCHEMA.md) |
 
 ## Design path (read these now)
@@ -32,6 +34,8 @@ Do this sequence. Each file names the previous file and the next file at the top
 
 After step 11 you know the product. The next design work is a new doc only if HLD, MODULAR, or SCHEMA cannot answer the question. Do not invent a service that HLD does not name.
 
+To write code, read SECURITY.md and BOOTSTRAP.md, then take one GitHub issue.
+
 ## Build path (later, one slice)
 
 Do not start this path until you have finished the design path.
@@ -48,6 +52,8 @@ Do not start this path until you have finished the design path.
 
 Prompt text for each slice lives in [AGENTS.md](../AGENTS.md). Copy one slice. Do not ask an agent for Slice 6 before Slice 2 works on one machine.
 
+To implement with Grok, Kimi, and Cursor, read [SECURITY.md](SECURITY.md) then [BOOTSTRAP.md](BOOTSTRAP.md). One GitHub issue per builder run.
+
 ## File index
 
 | File | Answers | Next |
@@ -55,7 +61,9 @@ Prompt text for each slice lives in [AGENTS.md](../AGENTS.md). Copy one slice. D
 | [docs/README.md](README.md) | Where to start | [../README.md](../README.md) |
 | [../LICENSE](../LICENSE) | BSL 1.1 terms and Additional Use Grant | not on the design path |
 | [../README.md](../README.md) | What the product is | [SUCCESS.md](SUCCESS.md) |
-| [SUCCESS.md](SUCCESS.md) | Wedge and what we ship first | [ROADMAP.md](ROADMAP.md) |
+| [SUCCESS.md](SUCCESS.md) | Wedge and what we ship first | [SECURITY.md](SECURITY.md) |
+| [SECURITY.md](SECURITY.md) | Fail closed, agent grants, secret rules | [BOOTSTRAP.md](BOOTSTRAP.md) |
+| [BOOTSTRAP.md](BOOTSTRAP.md) | Ravand builds Ravand. Issue order. Grok/Kimi/Cursor | GitHub issues, then Slice 0 |
 | [ROADMAP.md](ROADMAP.md) | What ships in v0, v1, v2, v3 | [HLD.md](HLD.md) |
 | [HLD.md](HLD.md) | Which services exist and how a run flows | [DSH-CORDIS.md](DSH-CORDIS.md) |
 | [DSH-CORDIS.md](DSH-CORDIS.md) | Cordis architecture we study, kernel we write, differences we keep | [MODULAR.md](MODULAR.md) |
@@ -69,4 +77,4 @@ Prompt text for each slice lives in [AGENTS.md](../AGENTS.md). Copy one slice. D
 
 ## If a file disagrees
 
-`examples/harness.toml` and `examples/policy.user.toml` win for v0 sample values. SCHEMA.md must copy them. HLD.md wins for service names. MODULAR.md wins for seams (accounts, loops, workflows). AGENTS.md wins for slice order and fail-closed rules. This map wins for reading order.
+`examples/harness.toml` and `examples/policy.user.toml` win for v0 sample values. SCHEMA.md must copy them. HLD.md wins for service names. MODULAR.md wins for seams (accounts, loops, workflows). SUCCESS.md wins for what we ship first. AGENTS.md wins for slice order and fail-closed rules. This map wins for reading order.

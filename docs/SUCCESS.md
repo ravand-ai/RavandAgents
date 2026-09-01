@@ -76,4 +76,6 @@ BSL with a $250k grant is enough to talk to a company. Do not spend time on cont
 
 Follow [ROADMAP.md](ROADMAP.md) v0 only. Slice 0 and 1 in [AGENTS.md](../AGENTS.md). Do not open Slice 6, workflows, or a plugin registry.
 
+Dogfood plan: [SECURITY.md](SECURITY.md) then [BOOTSTRAP.md](BOOTSTRAP.md).
+
 Next: [Roadmap](ROADMAP.md)

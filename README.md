@@ -41,6 +41,7 @@ ravand status                # workers, queue (v2), login probes
 
 ```
 LICENSE                   # Business Source License 1.1
+harness.toml              # this repo as first Ravand project
 AGENTS.md                 # project rules + implement slices
 README.md                 # product pitch
 docs/
@@ -50,6 +51,8 @@ docs/
   DSH-CORDIS.md          # Cordis-shaped kernel, not the Cordis package
   MODULAR.md             # accounts, loops, workflows, sandbox, cloud
   SUCCESS.md             # wedge and ship-first
+  SECURITY.md            # fail closed, agent grants
+  BOOTSTRAP.md           # Ravand builds Ravand
   COMPARE-PEERS.md       # gaps vs OpenClaw, Hermes, Grok Build
   SCHEMA.md
   GOVERNANCE.md
