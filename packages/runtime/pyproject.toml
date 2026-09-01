@@ -3,6 +3,7 @@ name = "ravand-runtime"
 version = "0.0.0"
 requires-python = ">=3.12"
 dependencies = [
+    "ravand-hooks",
     "ravand-policy",
     "ravand-profile",
     "ravand-permissions",

@@ -225,6 +225,7 @@ version = "0.0.0"
 source = { editable = "packages/runtime" }
 dependencies = [
     { name = "ravand-audit" },
+    { name = "ravand-hooks" },
     { name = "ravand-permissions" },
     { name = "ravand-policy" },
     { name = "ravand-profile" },
@@ -235,6 +236,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "ravand-audit", editable = "packages/audit" },
+    { name = "ravand-hooks", editable = "packages/hooks" },
     { name = "ravand-permissions", editable = "packages/permissions" },
     { name = "ravand-policy", editable = "packages/policy" },
     { name = "ravand-profile", editable = "packages/profile" },
