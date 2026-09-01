@@ -21,6 +21,20 @@ from ravand_runtime import audit_agent_denied, run_prompt
 Runner = Callable[..., int]
 
 
+class Composer(TextArea):
+    """Enter sends. Ctrl+Enter / Shift+Enter / Ctrl+J insert a newline."""
+
+    BINDINGS = [
+        Binding("enter", "app.submit_prompt", "Send", priority=True),
+        Binding("ctrl+enter", "newline", "Newline", priority=True),
+        Binding("shift+enter", "newline", "Newline", priority=True),
+        Binding("ctrl+j", "newline", "Newline", priority=True),
+    ]
+
+    def action_newline(self) -> None:
+        self.insert("\n")
+
+
 class Turn(Static):
     """One chat bubble. Mouse-selectable."""
 
@@ -129,9 +143,6 @@ class RavandApp(App[int]):
         Binding("ctrl+c", "interrupt", "Stop", priority=True),
         Binding("ctrl+shift+c", "copy_text", "Copy", priority=True),
         Binding("ctrl+y", "copy_text", "Copy", show=False),
-        Binding("ctrl+j", "submit_prompt", "Send", priority=True),
-        Binding("ctrl+enter", "submit_prompt", "Send", priority=True, show=False),
-        Binding("ctrl+i", "submit_prompt", "Send", priority=True, show=False),
     ]
 
     def __init__(
@@ -168,10 +179,10 @@ class RavandApp(App[int]):
         yield Static(id="perm")
         with Vertical(id="composer"):
             yield Static(
-                "enter newline  ·  ctrl+j send  ·  ctrl+shift+c copy  ·  y/n tools  ·  ctrl+c stop",
+                "enter send  ·  ctrl+enter / shift+enter newline  ·  ctrl+shift+c copy  ·  ctrl+c stop",
                 id="hint",
             )
-            yield TextArea(id="prompt")
+            yield Composer(id="prompt")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -181,7 +192,7 @@ class RavandApp(App[int]):
         self.query_one("#transcript", VerticalScroll).mount(
             Turn("sys", "Operator console. Policy and audit stay on. Not a Grok clone.")
         )
-        box = self.query_one("#prompt", TextArea)
+        box = self.query_one("#prompt", Composer)
         box.focus()
 
     def _tick(self) -> None:
@@ -210,7 +221,7 @@ class RavandApp(App[int]):
             return
 
     def action_submit_prompt(self) -> None:
-        box = self.query_one("#prompt", TextArea)
+        box = self.query_one("#prompt", Composer)
         prompt = box.text.strip()
         if not prompt or self._busy or self._asking:
             return
@@ -435,7 +446,7 @@ class RavandApp(App[int]):
         if not self.is_attached:
             return
         try:
-            box = self.query_one("#prompt", TextArea)
+            box = self.query_one("#prompt", Composer)
             box.disabled = False
             box.focus()
             self._flush_pending()

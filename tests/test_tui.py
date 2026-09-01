@@ -223,6 +223,33 @@ def test_textual_app_copies_last_agent_turn() -> None:
     assert "copy-me-please" in (app._clipboard or "")
 
 
+def test_composer_enter_sends_ctrl_enter_newline() -> None:
+    from ravand_cli.tui import Composer, RavandApp
+
+    seen: list[str] = []
+
+    def fake_runner(policy, prompt, *, cwd, sink, ask, yes, cancel=None):
+        seen.append(prompt)
+        sink({"type": "run.ended", "status": "ok"})
+        return 0
+
+    app = RavandApp(cwd=ROOT, runner=fake_runner)
+
+    async def _go() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            box = app.query_one("#prompt", Composer)
+            box.load_text("first")
+            box.action_newline()
+            assert "\n" in box.text
+            box.load_text("hello")
+            app.action_submit_prompt()
+            await pilot.pause(0.2)
+
+    asyncio.run(_go())
+    assert seen == ["hello"]
+
+
 def test_first_ctrl_c_cancels_run_second_quits() -> None:
     from ravand_cli.tui import RavandApp, Turn
 
