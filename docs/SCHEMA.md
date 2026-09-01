@@ -2,7 +2,7 @@
 
 Reading: [Docs map](README.md)
 
-Previous: [Modular runtime](MODULAR.md)
+Previous: [Compared with OpenClaw, Hermes, Grok Build](COMPARE-PEERS.md)
 Next: [Governance](GOVERNANCE.md)
 
 Canonical samples: [examples/harness.toml](../examples/harness.toml), [examples/policy.user.toml](../examples/policy.user.toml).

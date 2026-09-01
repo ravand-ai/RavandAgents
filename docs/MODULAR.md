@@ -3,7 +3,7 @@
 Reading: [Docs map](README.md)
 
 Previous: [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md)
-Next: [Schema](SCHEMA.md)
+Next: [Compared with OpenClaw, Hermes, Grok Build](COMPARE-PEERS.md)
 
 This file is product law for how a project picks providers, loops, tools, sandboxes, and people. [HLD.md](HLD.md) names services. This file names the seams those services plug.
 
@@ -147,4 +147,4 @@ v0 still ships the ACP + seat path: `ravand which`, `ravand run`, isolated HOMEs
 
 Native loop, named API accounts, sandbox plugins, workflows, pipelines, HTTP API, webhooks, bus (PGMQ first), cloud users, eval store: later slices. The seams exist in this doc so HLD and SCHEMA do not paint themselves into a CLI-only or Postgres-only corner.
 
-Next: [Schema](SCHEMA.md)
+Next: [Compared with OpenClaw, Hermes, Grok Build](COMPARE-PEERS.md)
