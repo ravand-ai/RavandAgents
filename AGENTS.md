@@ -119,7 +119,7 @@ Next: Slice 2.
 
 #### Slice 2: ACP Runtime for ONE agent
 
-Read first: HLD ACP Runtime, HLD Permission Broker, SCHEMA CLI exit codes.
+Read first: HLD ACP Runtime, HLD Permission Broker, SCHEMA SessionEvent and CLI exit codes.
 
 Start with Grok Build if `grok` is on PATH: `grok agent stdio`.
 Fallback order: `kimi acp` → `npx -y @agentclientprotocol/claude-agent-acp` → `cursor-agent acp`.
@@ -131,10 +131,11 @@ Handshake:
 3. if agent requires `authenticate`, try advertised method `cached_token` / existing session; else print vendor login and exit 2
 4. `session/new` with absolute cwd
 5. `session/prompt`
-6. print streamed assistant text
+6. emit `SessionEvent` JSONL (`run.started`, `text.delta`, `run.ended`). Do not print secrets.
 7. `session/close` on SIGINT / completion
 
 Permission mode v0: `repo-only` (allow read/write under cwd, deny else; shell = ask or deny in `--yes` CI).
+`--format jsonl` is the default for scripts. A human TTY may still show text. The machine stream must exist.
 
 Next: Slice 3.
 

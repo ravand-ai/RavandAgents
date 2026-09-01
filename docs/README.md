@@ -39,7 +39,7 @@ Do not start this path until you have finished the design path.
 |-------|---------------|----------------------|------------|
 | 0 | `packages/cli` bin `ravand`, commands say not implemented | Product README, HLD services list, AGENTS.md Slice 0 | 1 |
 | 1 | `ravand which`, `ravand login`, profile dirs, policy tests | SCHEMA.md, both example tomls, HLD Policy / Profile / Registry | 2 |
-| 2 | ACP runtime for one agent, `ravand run` | HLD ACP Runtime and Permission Broker, SCHEMA exit codes | 3 |
+| 2 | ACP runtime, `ravand run --format jsonl` | HLD ACP Runtime, SCHEMA SessionEvent | 3 |
 | 3 | `~/.ravand/sessions/` and `audit.jsonl` | SCHEMA SessionRecord and Audit event, HLD Session and Audit | 4 |
 | 4 | Overflow agent on rate_limit | HLD run path step 8, SCHEMA `overflowOf` and `agent.overflow` | 5 |
 | 5 | OTel spans if `OTEL_EXPORTER_OTLP_ENDPOINT` is set | SCHEMA OTel | 6 |

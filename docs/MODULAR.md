@@ -53,29 +53,88 @@ Each row is a plugin. The project preset lists which provider implements it.
 | MCP | named servers from `harness.toml` | Selective. Deny list wins |
 | Subagents | ACP child or native child | Isolated HOME or sandbox |
 | Sandbox | none, repo-only, container, remote | Required when policy says so |
-| Human verification | off, local ask, named approver | If needed. Timeout fail closed |
+| Human verification | off, local ask, named approver, plan | Plan mode approves the plan before writes |
+| Skills | named `SKILL.md` packs | Allow list. Not a public store |
+| Hooks | scripts on tool/file events | Not MCP. Deny from a hook fails closed |
+| Memory | durable notes for later runs | Classified. Customer never on personal |
+| Cron | schedule → run or workflow | Same Policy path as webhook |
+| Steer | extra instruction into a live run | ACP child or native loop |
+| Stream | JSONL / SSE SessionEvent | `ravand run` and HTTP, not stdout text only |
 | Workflow | graph of steps | May bind tools, functions, subagents |
 | Pipeline | ordered stages | Same bindings as workflow |
 | Eval | golden tasks, judges | Optional |
 | Metrics | duration, tool calls, cost proxy, result enum | Always on in-process. OTLP if set |
-| Trigger | CLI, HTTP API, webhook | Policy still runs before any run starts |
+| Trigger | CLI, HTTP API, webhook, cron | Policy still runs before any run starts |
 | Bus | PGMQ (default), Kafka, other | Same task payload. Secrets never on the bus |
 
 Workflows and pipelines are both runners. The difference is shape (graph vs ordered stages), not what they may attach. Either may accept tools, functions, and subagents. A step that cannot resolve its bindings fails closed.
 
-## Triggers: CLI, API, webhook
+## Triggers: CLI, API, webhook, cron
 
 A run or a workflow may start from:
 
 | Trigger | When |
 |---------|------|
 | CLI | `ravand run`, local v0 |
-| HTTP API | Cloud and later local server. Authn required. |
+| HTTP API | Cloud and later local server. Authn required. Stream is SSE of SessionEvent. |
 | Webhook | Signed inbound event. A rule maps the event to a workflow, pipeline, or single run. |
+| Cron | Schedule in policy (`0 9 * * 1-5`). Fires the same Gateway path. |
 
-The trigger does not skip Policy. Gateway receives the event, resolves policy and account, then enqueues or runs. An unsigned or unknown webhook fails closed.
+The trigger does not skip Policy. Gateway receives the event, resolves policy and account, then enqueues or runs. An unsigned or unknown webhook fails closed. A cron job whose account or classification no longer matches is skipped and audited `trigger.denied`.
 
-Webhook secrets live in the profile store or org vault, same as API keys. They do not go in `harness.toml` as raw values. The file may name `secret_ref`.
+Webhook and cron secrets live in the profile store or org vault. They do not go in `harness.toml` as raw values. The file may name `secret_ref`.
+
+## Skills
+
+A skill is a named, versioned instruction pack (`SKILL.md` plus optional scripts). The loop may load it. A workflow is a graph of steps. They are not the same thing.
+
+Project policy lists `skills.allow`. Unknown skills do not load. Skills inherit classification: a customer repo cannot load a skill that reads a personal memory store.
+
+Ravand does not ship a public skill marketplace. ClawHub stays out.
+
+The target repo's `AGENTS.md` (or `ravand.toml` skill index) may be loaded as context when policy allows `agents_md = true`.
+
+## Hooks
+
+A hook is a command that runs on an event: `tool.pre`, `tool.post`, `file.write`, `run.start`, `run.end`. It is not an MCP server.
+
+The hook receives a JSON payload (no secrets). Exit 0 continues. Non-zero is deny for `tool.pre` and `file.write` (fail closed). `tool.post` and `run.end` may warn only; they cannot rewrite history.
+
+Hooks are listed in `harness.toml`. A missing hook binary fails closed for pre-hooks.
+
+## Memory
+
+Memory is durable notes a later run may read. It is not the audit log and not the vendor transcript.
+
+Path: `~/.ravand/profiles/<profile>/memory/` or a store plugin. Each entry has classification. Customer memory never lives on a personal profile. Work memory is off the audit body path by default.
+
+The loop only sees memory that Policy injects. Agents cannot dump the whole store.
+
+## Plan mode
+
+When `human = "plan"` (or permissions mode `plan`):
+
+1. The runtime asks the agent for a plan (ACP prompt or native).
+2. Permission Broker shows the plan. Writes and shell stay denied until allow.
+3. Allow → execute. Deny or timeout → no writes.
+
+This is coarser than per-tool `ask` and stricter than `repo-only`. `--yes` does not auto-approve a plan unless policy says `plan_ci = true`.
+
+## Steer
+
+`Gateway.Steer(sessionId, text)` pushes extra instruction into a live run.
+
+- ACP child: `session/prompt` on the same session (or vendor steer if advertised).
+- Native loop: inject into the next model request.
+- If the session is not running: error, do not start a new run.
+
+Cancel remains `Gateway.Cancel`. Steer is not cancel.
+
+## Stream
+
+`ravand run` and the HTTP API emit `SessionEvent` objects, one JSON object per line (CLI) or SSE (HTTP). Stdout text-only is not enough for bots.
+
+Minimum event types: `run.started`, `text.delta`, `tool.call`, `permission.ask`, `plan.ready`, `steer.accepted`, `run.ended`. Schema in SCHEMA.md. No secret fields.
 
 ## Bus: Postgres first, not Postgres-only
 
@@ -143,8 +202,8 @@ These are not project options:
 
 ## v0 vs later
 
-v0 still ships the ACP + seat path: `ravand which`, `ravand run`, isolated HOMEs, permission ask, session, audit.
+v0 still ships the ACP + seat path: `ravand which`, `ravand run --format jsonl`, isolated HOMEs, permission ask, session, audit.
 
-Native loop, named API accounts, sandbox plugins, workflows, pipelines, HTTP API, webhooks, bus (PGMQ first), cloud users, eval store: later slices. The seams exist in this doc so HLD and SCHEMA do not paint themselves into a CLI-only or Postgres-only corner.
+Skills, hooks, memory, plan mode, steer, ACP server: v1. Cron, HTTP SSE, webhooks, native loop, sandbox plugins, workflows, bus, cloud users, eval store: later. The seams exist in this doc so HLD and SCHEMA do not paint themselves into a CLI-only or Postgres-only corner.
 
 Next: [Compared with OpenClaw, Hermes, Grok Build](COMPARE-PEERS.md)

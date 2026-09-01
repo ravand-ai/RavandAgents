@@ -23,8 +23,9 @@ Human / IDE / CI / cloud user
  Ravand kernel (plugins)
    Policy · Profile · Accounts · Registry
    Loop (ACP child and/or native)
-   Tools · Functions · MCP · Subagents
-   Sandbox · Human verification
+   Tools · Functions · MCP · Subagents · Skills · Hooks
+   Sandbox · Human verification · Plan · Steer
+   Memory · Cron · Stream
    Workflow · Pipeline
    Session · Audit · Eval · Metrics
         │
@@ -41,8 +42,8 @@ Seam list and project rules: [MODULAR.md](MODULAR.md).
 3. Two model paths: subscription CLI over ACP, or native loop with a named API account. Do not wrap a vendor CLI's HTTP. Do not scrape TUI output.
 4. Secrets never live in `harness.toml`, the bus, or work audit (unless `RAVAND_AUDIT_BODIES=1`). CLI cookies stay in the profile HOME and are not read. API keys live in the profile secret store or the cloud vault.
 5. Workflows and pipelines may both bind tools, functions, and subagents. Missing bindings fail closed.
-6. Human verification, when required, blocks the action until allow or timeout-deny.
-7. v0 = one process, ACP + seats. Native loop, sandbox plugins, workflows, HTTP API, webhooks, cloud users, eval store come later. The bus is v2.
+6. Human verification, when required, blocks the action until allow or timeout-deny. Plan mode blocks writes until the plan is allowed.
+7. v0 = one process, ACP + seats + JSONL stream. Skills, hooks, memory, plan, steer, ACP server are v1. Native loop, cron, HTTP, webhooks, workflows, bus, cloud users, eval store come later.
 8. The bus moves **tasks**, never credentials. Default bus is Postgres + PGMQ. Kafka and others are providers of the same seam. Do not import the bus driver from Policy or Runtime.
 9. Kernel services use dependency injection by key. Packages depend on seams, not on Postgres.
 10. Every task has `task_id` + a trace. Fail closed if policy, permission, or account cannot be evaluated.
@@ -57,19 +58,20 @@ Only public surface.
 Logical API:
 
 - `Which(cwd) → ResolvedPolicy + command`
-- `Run(cwd, prompt, agent?) → stream SessionEvent`
+- `Run(cwd, prompt, agent?) → stream SessionEvent` (JSONL)
 - `Login(profile, account) → hint | status`
 - `Cancel(sessionId)`
-- later: HTTP API for the same calls
-- later: inbound webhook → workflow, pipeline, or run
-- later: `Approve(taskId)`, `Eval(taskId)`
+- `Steer(sessionId, text)`
+- later: HTTP API (SSE of the same events)
+- later: inbound webhook or cron → workflow, pipeline, or run
+- later: `Approve(taskId)`, `ApprovePlan(taskId)`, `Eval(taskId)`
 
 Modes:
 
 - ACP **client** (CLI, CI)
-- ACP **server** later (Zed/VS Code see one agent named `ravand`)
-- HTTP **API** later (same logical calls)
-- **Webhook** later (signed inbound → policy → bus or local run)
+- ACP **server** (v1: Zed/VS Code see one agent named `ravand`)
+- HTTP **API** later (SSE)
+- **Webhook** and **cron** later (signed or scheduled → policy → bus or local run)
 
 ### Policy
 
@@ -112,7 +114,9 @@ Spawn + handshake + stream + overflow trigger.
 
 `initialize` → optional `authenticate` → `session/new|load` → `session/prompt` → `session/close`.
 
-Native loop (later) is a different runtime plugin on the same Permission Broker, Session, Audit, and Sandbox seams. v0 does not ship it.
+Steer is a further `session/prompt` (or vendor steer) on the live session. Stream every ACP session event as `SessionEvent` JSONL.
+
+Native loop (later) is a different runtime plugin on the same Permission Broker, Session, Audit, Sandbox, Skill, Hook, and Memory seams. v0 does not ship it.
 
 ### Permission Broker
 
@@ -124,12 +128,33 @@ Answers `session/request_permission`.
 | approve-reads | allow | ask | deny | ask |
 | deny-writes | allow | deny | deny | deny |
 | ask | ask | ask | deny | ask |
+| plan | allow after plan allow | deny until plan allow | deny | deny until plan allow |
 
-Human verification in the cloud is the same broker with a named approver and a timeout. Timeout is deny.
+Human verification in the cloud is the same broker with a named approver and a timeout. Timeout is deny. Plan mode is `ApprovePlan` before any write.
 
 ### Sandbox
 
 Seam. Provider is none, repo-only OS, container, or remote. Customer classification cannot choose `none` if the project writes files or runs shell.
+
+### Skills
+
+Named `SKILL.md` packs. Policy allow list. Loaded into the loop, not executed as a workflow.
+
+### Hooks
+
+Commands on `tool.pre`, `tool.post`, `file.write`, `run.start`, `run.end`. Pre-hooks may deny (fail closed).
+
+### Memory
+
+Classified durable notes under the profile. Injected only through Policy. Not the audit log.
+
+### Cron
+
+Scheduler trigger. Same Gateway path as webhook. Skips and audits if policy no longer allows the job.
+
+### Stream
+
+`SessionEvent` JSONL on CLI. SSE on HTTP. See SCHEMA.md.
 
 ### Workflow and pipeline
 

@@ -16,7 +16,7 @@ profile = "work"                 # work | personal | <named>
 default = "grok"                 # registry id
 overflow = "kimi"                # or "" 
 deny = []                        # never use these here
-permissions = "repo-only"        # repo-only | approve-reads | deny-writes | ask
+permissions = "repo-only"        # repo-only | approve-reads | deny-writes | ask | plan
 classification = "internal"      # public | internal | customer
 
 [agents.claude]
@@ -41,7 +41,20 @@ Later fields (not in the v0 example file). Names only. Secrets stay out of git:
 ```toml
 loop = "acp"                    # acp | native
 sandbox = "repo-only"           # none | repo-only | container | remote
-human = "ask"                   # off | ask | approver
+human = "ask"                   # off | ask | approver | plan
+agents_md = true                # load repo AGENTS.md as context
+
+[skills]
+allow = ["review-diff"]
+
+[hooks]
+# { on = "tool.pre", command = ["./hooks/pre.sh"] }
+
+[memory]
+enabled = true
+
+[cron]
+# jobs = [{ id = "morning", spec = "0 9 * * 1-5", prompt = "status" }]
 
 [accounts]
 allow = ["grok-work", "claude-company"]
@@ -94,14 +107,16 @@ type ResolvedPolicy = {
   defaultAgent: string
   overflowAgent: string | null
   deny: string[]
-  permissions: "repo-only" | "approve-reads" | "deny-writes" | "ask"
+  permissions: "repo-only" | "approve-reads" | "deny-writes" | "ask" | "plan"
   classification: "public" | "internal" | "customer"
   command: string[]
   mcp: { name: string; command: string[] }[]
   accounts?: string[]
   loop?: "acp" | "native"
   sandbox?: "none" | "repo-only" | "container" | "remote"
-  human?: "off" | "ask" | "approver"
+  human?: "off" | "ask" | "approver" | "plan"
+  skillsAllow?: string[]
+  agentsMd?: boolean
 }
 ```
 
@@ -143,6 +158,11 @@ type AuditEvent = {
     | "auth.missing"
     | "profile.mismatch"
     | "worker.capability_miss"
+    | "trigger.denied"
+    | "plan.allow"
+    | "plan.deny"
+    | "steer.accepted"
+    | "hook.deny"
   taskId: string
   profile?: string
   agent?: string
@@ -218,6 +238,33 @@ ravand.task.result            # ok|overflow|rate_limit|auth_missing|crash|denied
 ravand.worker.up
 ravand.permission.denied
 ```
+
+## SessionEvent (stream)
+
+CLI: one JSON object per line on stdout (`ravand run --format jsonl`).  
+HTTP: `text/event-stream` with the same objects.
+
+```ts
+type SessionEvent = {
+  ts: string
+  taskId: string
+  type:
+    | "run.started"
+    | "text.delta"
+    | "tool.call"
+    | "tool.result"
+    | "permission.ask"
+    | "plan.ready"
+    | "steer.accepted"
+    | "hook.deny"
+    | "run.ended"
+  text?: string
+  tool?: string
+  status?: SessionRecord["status"]
+}
+```
+
+No secret fields. No cookie paths. `text.delta` is assistant text only.
 
 ## CLI exit codes
 

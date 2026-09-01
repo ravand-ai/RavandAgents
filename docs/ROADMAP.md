@@ -14,6 +14,7 @@ Next: [HLD](HLD.md)
 - Session + Audit
 - Overflow
 - Local human ask
+- `ravand run --format jsonl` SessionEvent stream
 - OTel no-op or OTLP if env set
 
 Exit: you can run Ravand Agents on a real repo with Grok Build logged into the personal or work HOME.
@@ -26,13 +27,20 @@ Exit: you can run Ravand Agents on a real repo with Grok Build logged into the p
 - Sandbox seam
 - `harness.toml` committed per repo
 - ACP server mode so Zed / VS Code attach to `ravand`
+- Skills allow list (`SKILL.md`)
+- Hooks (`tool.pre` fail closed)
+- Classified memory store
+- Plan mode (`human = "plan"`)
+- `ravand steer <sessionId>`
+- Load target repo `AGENTS.md` when policy allows
 - Classification field enforced (customer repo ≠ personal profile or personal account)
 
 ## v2: workflows, distribution, cloud users
 
 - Workflows and pipelines; both bind tools, functions, subagents
 - Human verification queue (named approver, timeout deny)
-- HTTP API and signed webhooks to start a run or workflow
+- HTTP API (SSE) and signed webhooks to start a run or workflow
+- Cron trigger (same Policy path)
 - Bus seam: Postgres + PGMQ default (`q.tasks`, `q.events`, `q.results`). Kafka as an alternate provider
 - Worker process + capability advertisement
 - Cloud: multiple users, roles, per-project access
