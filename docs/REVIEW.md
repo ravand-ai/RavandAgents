@@ -49,15 +49,15 @@ Update the GitHub Project card to Done. Unblock the next wave. Next Ready cards 
 
 Stacked child PRs must retarget to `main` before the base branch is deleted.
 
-Once `ravand run` works (Slice 2 on `main`):
+`ravand run` already works (Slice 2 is on `main`):
 
 ```bash
-uv run ravand run -a kimi --format jsonl "implement issue #N. SECURITY.md. One branch."
-uv run ravand run -a cursor --format jsonl "..."
-uv run ravand run -a grok --format jsonl "review PR #N using docs/REVIEW.md"
+uv run ravand run -a kimi --yes --format jsonl "implement issue #N. SECURITY.md. One branch."
+uv run ravand run -a cursor --yes --format jsonl "..."
+uv run ravand run -a grok --yes --format jsonl "review PR #N using docs/REVIEW.md"
 ```
 
-Do not call `kimi` / `cursor-agent` / `grok` naked on this repo after that, except overflow if `ravand run` itself is broken.
+Do not call `kimi` / `cursor-agent` / `grok` naked on this repo except overflow if `ravand run` itself is broken.
 
 ## Stacked slices
 
