@@ -1,4 +1,4 @@
-"""Operator TUI (Textual). Status, stream, prompt, y/n permission. Not a coding TUI."""
+"""Operator TUI (Textual). Multi-line prompt, streamed log, y/n permission."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from typing import Any
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.widgets import Footer, Input, Log, Static
+from textual.widgets import Footer, Log, Static, TextArea
 
 from ravand_cli.status import header_text
 from ravand_policy import PolicyDenied, UnknownAgent, resolve
@@ -28,12 +28,12 @@ class RavandApp(App[int]):
     #status { height: 3; padding: 0 1; background: $primary; color: $text; }
     #stream { height: 1fr; border: solid $surface; }
     #perm { height: 3; padding: 0 1; background: $warning; color: $text; display: none; }
-    #prompt { dock: bottom; }
+    #prompt { height: 8; border: solid $accent; }
     """
 
     BINDINGS = [
         Binding("ctrl+c", "quit", "Quit"),
-        Binding("escape", "quit", "Quit"),
+        Binding("ctrl+j", "submit_prompt", "Submit", priority=True),
     ]
 
     def __init__(
@@ -55,23 +55,26 @@ class RavandApp(App[int]):
         yield Static(id="status")
         yield Log(id="stream", highlight=False)
         yield Static(id="perm")
-        yield Input(placeholder="prompt  (enter to run)", id="prompt")
+        yield TextArea(id="prompt")
         yield Footer()
 
     def on_mount(self) -> None:
         self.query_one("#status", Static).update(header_text(self.cwd))
-        self.query_one("#prompt", Input).focus()
+        box = self.query_one("#prompt", TextArea)
+        box.tooltip = "Enter = newline. Ctrl+J = run."
+        box.focus()
 
-    def on_input_submitted(self, event: Input.Submitted) -> None:
-        prompt = event.value.strip()
-        event.input.value = ""
-        if not prompt or self._busy:
+    def action_submit_prompt(self) -> None:
+        box = self.query_one("#prompt", TextArea)
+        prompt = box.text.strip()
+        if not prompt or self._busy or self._asking:
             return
         if prompt in {"q", "quit", "exit"}:
             self.exit(0)
             return
+        box.load_text("")
         self._busy = True
-        self.query_one("#prompt", Input).disabled = True
+        box.disabled = True
         self._run_agent(prompt)
 
     def on_key(self, event) -> None:  # noqa: ANN001
@@ -95,9 +98,7 @@ class RavandApp(App[int]):
         self._perm_event.clear()
         self._perm_ok = False
         self.call_from_thread(self._show_ask, detail)
-        if not self._perm_event.wait(timeout=120):
-            self.call_from_thread(self._finish_ask, False)
-            return False
+        self._perm_event.wait()
         return self._perm_ok
 
     def _show_ask(self, detail: str) -> None:
@@ -144,7 +145,7 @@ class RavandApp(App[int]):
 
     def _idle(self) -> None:
         self._busy = False
-        box = self.query_one("#prompt", Input)
+        box = self.query_one("#prompt", TextArea)
         box.disabled = False
         box.focus()
         try:
