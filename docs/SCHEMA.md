@@ -2,7 +2,7 @@
 
 Reading: [Docs map](README.md)
 
-Previous: [HLD](HLD.md)
+Previous: [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md)
 Next: [Governance](GOVERNANCE.md)
 
 Canonical samples: [examples/harness.toml](../examples/harness.toml), [examples/policy.user.toml](../examples/policy.user.toml).

@@ -48,6 +48,7 @@ docs/
   README.md               # start here: reading order
   ROADMAP.md
   HLD.md
+  DSH-CORDIS.md          # dsh/Cordis comparison (proposal)
   SCHEMA.md
   GOVERNANCE.md
 examples/

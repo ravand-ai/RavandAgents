@@ -3,7 +3,7 @@
 Reading: [Docs map](README.md)
 
 Previous: [Roadmap](ROADMAP.md)
-Next: [Schema](SCHEMA.md)
+Next: [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md)
 
 Status: v0.2  
 Style: local-first, then Postgres/PGMQ workers  
@@ -189,4 +189,4 @@ Idempotency: `task_id`. Session Store rejects second start if status is running|
 - v2: Gateway + Postgres; workers on machines that have both the repo and the logins
 - Never SaaS that stores company Claude/Grok cookies
 
-Next: [Schema](SCHEMA.md)
+Next: [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md)
