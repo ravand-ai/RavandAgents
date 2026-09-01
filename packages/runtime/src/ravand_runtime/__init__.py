@@ -1,5 +1,5 @@
 """ACP runtime."""
 
-from ravand_runtime.run import run_prompt
+from ravand_runtime.run import audit_agent_denied, run_prompt
 
-__all__ = ["run_prompt"]
+__all__ = ["audit_agent_denied", "run_prompt"]

@@ -4,20 +4,40 @@ from __future__ import annotations
 
 import json
 import sys
+import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from ravand_audit import AuditLog
 from ravand_permissions import decide_repo_only
-from ravand_policy import ResolvedPolicy
+from ravand_policy import ResolvedPolicy, ravand_home
 from ravand_profile import ensure_profile_home
 from ravand_runtime.acp import spawn
+from ravand_sessions import SessionStore
 
 EventSink = Callable[[dict[str, Any]], None]
 
 
-def _emit(sink: EventSink, event: dict[str, Any]) -> None:
-    sink(event)
+def _now_iso() -> str:
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _emit(sink: EventSink, event: dict[str, Any], *, task_id: str) -> None:
+    sink({"ts": _now_iso(), "taskId": task_id, **event})
+
+
+def audit_agent_denied(detail: str, *, cwd: Path | None = None) -> None:
+    """Record a policy denial without spawning an agent."""
+    task_id = str(uuid.uuid4())
+    log = AuditLog(ravand_home())
+    log.emit(
+        "agent.denied",
+        task_id=task_id,
+        cwd=str(cwd.resolve()) if cwd else None,
+        detail=detail,
+    )
 
 
 def run_prompt(
@@ -28,28 +48,68 @@ def run_prompt(
     sink: EventSink,
 ) -> int:
     cwd = cwd.resolve()
+    task_id = str(uuid.uuid4())
+    root = ravand_home()
+    store = SessionStore(root)
+    log = AuditLog(root)
+
     ensure_profile_home(policy.home)
-    _emit(sink, {"type": "run.started", "profile": policy.profile, "agent": policy.agent})
-    client = spawn(policy.command, cwd=cwd, home=policy.home)
+    log.emit(
+        "agent.selected",
+        task_id=task_id,
+        profile=policy.profile,
+        agent=policy.agent,
+        cwd=str(cwd),
+    )
+    record = store.start(
+        task_id=task_id,
+        cwd=str(cwd),
+        profile=policy.profile,
+        agent=policy.agent,
+        command=policy.command,
+    )
+    log.emit(
+        "run.started",
+        task_id=task_id,
+        profile=policy.profile,
+        agent=policy.agent,
+        cwd=str(cwd),
+    )
+    _emit(sink, {"type": "run.started"}, task_id=task_id)
+
+    client = None
+    session_acp_id: str | None = None
+    status = "error"
+    exit_code = 5
     try:
+        client = spawn(policy.command, cwd=cwd, home=policy.home)
         client.request_with_handlers("initialize", {"protocolVersion": 1})
         session = client.request_with_handlers(
             "session/new",
             {"cwd": str(cwd), "mcpServers": []},
         )
-        session_id = session.get("sessionId")
+        session_acp_id = session.get("sessionId")
 
         def on_update(msg: dict[str, Any]) -> None:
             update = (msg.get("params") or {}).get("update") or {}
             content = update.get("content") or {}
             text = content.get("text")
             if text:
-                _emit(sink, {"type": "text.delta", "text": text})
+                _emit(sink, {"type": "text.delta", "text": text}, task_id=task_id)
 
         def on_permission(msg: dict[str, Any]) -> dict[str, Any]:
             params = msg.get("params") or {}
             tool = params.get("toolCall") or {}
             decision = decide_repo_only(tool, str(cwd))
+            detail = str(tool.get("title") or tool.get("kind") or "tool")
+            audit_type = "permission.deny" if decision == "deny" else "permission.allow"
+            log.emit(
+                audit_type,
+                task_id=task_id,
+                profile=policy.profile,
+                agent=policy.agent,
+                detail=detail,
+            )
             _emit(
                 sink,
                 {
@@ -57,6 +117,7 @@ def run_prompt(
                     "tool": tool.get("title") or tool.get("kind"),
                     "text": json.dumps(tool.get("rawInput") or {}),
                 },
+                task_id=task_id,
             )
             option = "deny" if decision == "deny" else "allow"
             return {
@@ -69,21 +130,34 @@ def run_prompt(
         client.request_with_handlers(
             "session/prompt",
             {
-                "sessionId": session_id,
+                "sessionId": session_acp_id,
                 "prompt": [{"type": "text", "text": prompt}],
             },
             on_update=on_update,
             on_permission=on_permission,
         )
         try:
-            client.request_with_handlers("session/close", {"sessionId": session_id})
+            client.request_with_handlers("session/close", {"sessionId": session_acp_id})
         except Exception:
             pass
-        _emit(sink, {"type": "run.ended", "status": "ok"})
-        return 0
+        status = "ok"
+        exit_code = 0
     except Exception as exc:
         print(str(exc), file=sys.stderr)
-        _emit(sink, {"type": "run.ended", "status": "error"})
-        return 5
     finally:
-        client.close()
+        if client is not None:
+            client.close()
+        store.finish(
+            record.id,
+            status=status,
+            acp_session_id=session_acp_id if status == "ok" else None,
+        )
+        log.emit(
+            "run.ended",
+            task_id=task_id,
+            profile=policy.profile,
+            agent=policy.agent,
+            detail=status,
+        )
+        _emit(sink, {"type": "run.ended", "status": status}, task_id=task_id)
+    return exit_code
