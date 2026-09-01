@@ -94,3 +94,30 @@ def test_textual_app_permission_y_allows() -> None:
 
     asyncio.run(_go())
     assert allowed == [True]
+
+
+def test_textual_app_shows_user_bubble() -> None:
+    from ravand_cli.tui import RavandApp, Turn
+
+    def fake_runner(policy, prompt, *, cwd, sink, ask, yes):
+        sink({"type": "text.delta", "text": "ok"})
+        sink({"type": "run.ended", "status": "ok"})
+        return 0
+
+    app = RavandApp(cwd=ROOT, runner=fake_runner)
+    roles: list[str] = []
+
+    async def _go() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            box = app.query_one("#prompt")
+            box.load_text("hello you")
+            app.action_submit_prompt()
+            await pilot.pause(0.2)
+            for child in app.query_one("#transcript").children:
+                if isinstance(child, Turn):
+                    roles.extend(child.classes)
+
+    asyncio.run(_go())
+    assert "turn-user" in roles
+    assert "turn-agent" in roles
