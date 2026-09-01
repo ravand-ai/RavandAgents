@@ -192,7 +192,7 @@ Run: uv run pytest, plus AGENTS.md verify, plus CodeQL locally if available.
 Do not commit unless the issue says to. Do not push.
 ```
 
-## GitHub issues to open
+## GitHub issues 1–9 (shipped / historical)
 
 Issues 1–9 are already opened and shipped: https://github.com/ravand-ai/RavandAgents/issues  
 The list is historical. Leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open (checks 2 and 3). Do not implement issue 51.
