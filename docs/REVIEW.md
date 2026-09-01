@@ -47,6 +47,8 @@ If it is not safe: comment what failed, do not merge. Author (or overflow CLI) f
 
 Update the GitHub Project card to Done. Unblock the next wave. Next Ready cards may run in parallel (Kimi + Cursor). Grok reviews those PRs.
 
+Stacked child PRs must retarget to `main` before the base branch is deleted.
+
 Once `ravand run` works (Slice 2 on `main`):
 
 ```bash
