@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -96,6 +97,14 @@ def _emit_session_update(
         _emit(sink, {"type": "text.delta", "text": text}, task_id=task_id)
 
 
+def _watch_cancel(client: AcpClient, cancel: threading.Event) -> None:
+    def _run() -> None:
+        cancel.wait()
+        client.close()
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
 def _should_overflow(policy: ResolvedPolicy, *, triggered: bool) -> bool:
     overflow = policy.overflow_agent
     if not triggered or not overflow:
@@ -163,11 +172,17 @@ def _attempt_run(
     record: SessionRecord,
     ask: AskFn | None = None,
     yes: bool = False,
+    cancel: threading.Event | None = None,
 ) -> tuple[int, str, str | None, bool]:
     session_acp_id: str | None = None
     status = "error"
     exit_code = 5
     overflow = False
+    if cancel is not None:
+        _watch_cancel(client, cancel)
+        if cancel.is_set():
+            status = "cancelled"
+            return 0, status, None, False
     try:
         try:
             session = client.request_with_handlers(
@@ -243,8 +258,13 @@ def _attempt_run(
         status = "auth"
         exit_code = _auth_missing(policy, task_id=task_id, log=log)
     except Exception as exc:
-        overflow = _overflow_triggered(exc)
-        print(str(exc), file=sys.stderr)
+        if cancel is not None and cancel.is_set():
+            status = "cancelled"
+            exit_code = 0
+            overflow = False
+        else:
+            overflow = _overflow_triggered(exc)
+            print(str(exc), file=sys.stderr)
     finally:
         client.close()
         store.finish(
@@ -271,6 +291,7 @@ def run_prompt(
     sink: EventSink,
     ask: AskFn | None = None,
     yes: bool = False,
+    cancel: threading.Event | None = None,
 ) -> int:
     cwd = cwd.resolve()
     task_id = str(uuid.uuid4())
@@ -329,6 +350,7 @@ def run_prompt(
         record=record,
         ask=ask,
         yes=yes,
+        cancel=cancel,
     )
     if not _should_overflow(policy, triggered=triggered):
         return exit_code
@@ -394,5 +416,6 @@ def run_prompt(
         record=overflow_record,
         ask=ask,
         yes=yes,
+        cancel=cancel,
     )
     return overflow_exit
