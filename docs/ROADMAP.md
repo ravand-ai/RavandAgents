@@ -30,15 +30,15 @@ We over-built `ravand tui` (Textual, chat bubbles, copy, keys, timers). It is op
 - Auth handshake: missing login is exit 2 + `auth.missing`
 - Human ask on a TTY (`--yes` for scripts)
 - Optional `ravand tui` (do not grow it)
+- Dogfood #9 via `ravand run -a grok` ([#9](https://github.com/ravand-ai/RavandAgents/issues/9) / PR [#60](https://github.com/ravand-ai/RavandAgents/pull/60))
+- ACP turn survives the first tool: pick advertised permission `optionId` ([#54](https://github.com/ravand-ai/RavandAgents/issues/54) / PR [#58](https://github.com/ravand-ai/RavandAgents/pull/58))
+- Slice 5: OTel spans if `OTEL_EXPORTER_OTLP_ENDPOINT` is set, else no-op ([#55](https://github.com/ravand-ai/RavandAgents/issues/55) / PR [#59](https://github.com/ravand-ai/RavandAgents/pull/59); wiring [#57](https://github.com/ravand-ai/RavandAgents/issues/57) / PR [#61](https://github.com/ravand-ai/RavandAgents/pull/61))
 
-**Still v0. Do these in order. No native loop, no bus.**
+**Still v0. Do this. No native loop, no bus.**
 
 | Order | Work | Why |
 |-------|------|-----|
-| 1 | Dogfood #9 via `ravand run -a grok` | SUCCESS: we used Ravand to change this repo. Audit has `agent.selected` |
-| 2 | ACP turn must survive the first tool | #9 died after one WebFetch / permission. `session/prompt` must keep reading until the agent actually ends |
-| 3 | Slice 5: OTel | Original v0. Spans if `OTEL_EXPORTER_OTLP_ENDPOINT` is set, else no-op |
-| 4 | Two other real repos on `ravand which` + `run` | SUCCESS: `which` is right 100% of the time; a second human can login |
+| 4 | Two other real repos on `ravand which` + `run` ([#56](https://github.com/ravand-ai/RavandAgents/issues/56)) | SUCCESS: `which` is right 100% of the time; a second human can login |
 
 Exit: we refuse naked `grok` / `kimi` / `cursor-agent` on classified repos. Audit answers which profile touched the tree. Then v1.
 
