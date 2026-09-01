@@ -56,7 +56,8 @@ Each row is a plugin. The project preset lists which provider implements it.
 | Human verification | off, local ask, named approver, plan | Plan mode approves the plan before writes |
 | Skills | named `SKILL.md` packs | Allow list. Not a public store |
 | Hooks | scripts on tool/file events | Not MCP. Deny from a hook fails closed |
-| Memory | durable notes for later runs | Classified. Customer never on personal |
+| Memory | durable notes for later runs | Isolation scope + store plugin. Classified |
+| Plugin | any of the rows below, plus more | One install path. Manifest names the kind |
 | Cron | schedule → run or workflow | Same Policy path as webhook |
 | Steer | extra instruction into a live run | ACP child or native loop |
 | Stream | JSONL / SSE SessionEvent | `ravand run` and HTTP, not stdout text only |
@@ -106,9 +107,96 @@ Hooks are listed in `harness.toml`. A missing hook binary fails closed for pre-h
 
 Memory is durable notes a later run may read. It is not the audit log and not the vendor transcript.
 
-Path: `~/.ravand/profiles/<profile>/memory/` or a store plugin. Each entry has classification. Customer memory never lives on a personal profile. Work memory is off the audit body path by default.
+Isolation and storage are two seams. Policy names the **scope**. The preset names the **store**. Do not hard-code files.
 
-The loop only sees memory that Policy injects. Agents cannot dump the whole store.
+### Isolation scopes
+
+A memory space has one primary scope. Mixing scopes in one space is not allowed.
+
+| Scope | Who can read/write | Typical use |
+|-------|--------------------|-------------|
+| `session` | this run only | scratch. Dropped when the run ends |
+| `user` | one cloud user (or local OS user) | personal preferences |
+| `profile` | one seat HOME | work vs personal notes |
+| `project` | one repo / project id | decisions for this codebase |
+| `org` | users the role allows | shared runbooks |
+| `account` | one named LLM/CLI account | provider-specific hints |
+| custom | a plugin-defined key | only if Policy lists it |
+
+Customer classification never uses `user`/`profile` spaces that are personal. Project memory on a customer repo stays on work profiles. A query that would cross a denied scope fails closed. No silent merge of user memory into project memory.
+
+### Stores
+
+The store is a plugin. Same isolation API for all of them.
+
+| Store | When |
+|-------|------|
+| `file` | default local. Trees under the profile or project dir |
+| `sqlite` | single-file DB |
+| `postgres` | default when cloud/org memory is on |
+| `graph` | entities and relations (decisions, people, modules) |
+| other | allowed if it implements read/write/search/delete with scope in every key |
+
+A project may use more than one space: e.g. `project` on `graph` plus `user` on `file`. The loop only sees spaces Policy injects. Agents cannot dump a store. Work bodies still off audit by default.
+
+## Plugin system
+
+Everything extra is a **plugin**. Functions, kernel services, pipelines, webhooks, third-party integrations, memory stores, buses, sandboxes, loops, skills, hooks, and MCP adapters all install the same way. The kernel is the plugin host. There is not a second plugin runtime.
+
+```
+ravand plugin add <source>     # path, git, or registry later
+ravand plugin list
+# preset / harness.toml names which plugins this project mounts
+```
+
+### Manifest
+
+Each plugin ships `plugin.toml` (name may stay `plugin.toml`):
+
+```toml
+id = "acme.jira"
+version = "1.2.0"
+kind = "integration"          # see kinds below
+inject = ["policy", "bus"]    # kernel services it needs
+
+[grants]
+# what it is allowed to register. Empty grants mount nothing.
+```
+
+Unknown `kind` fails closed. A plugin cannot unmount Policy or Permission Broker. A plugin cannot read secret stores except through the account/vault seam it was granted.
+
+### Kinds
+
+| kind | Registers |
+|------|-----------|
+| `function` | one or more callable functions for the loop |
+| `tool` | model-facing tools |
+| `service` | a kernel service on a new or existing key |
+| `loop` | native agent loop |
+| `sandbox` | sandbox provider |
+| `bus` | bus provider |
+| `memory` | memory store |
+| `account` | provider/account adapter |
+| `skill` | skill pack |
+| `hook` | hook scripts or listeners |
+| `mcp` | MCP server adapter |
+| `trigger` | webhook, cron helper, or other inbound |
+| `workflow` | workflow definition or step type |
+| `pipeline` | pipeline definition or stage type |
+| `integration` | third party (issue tracker, chat, CI) |
+| `eval` | judge or golden-task source |
+
+One package may declare several kinds. Each kind is a separate grant. An integration that also wants a webhook must list both `integration` and `trigger`.
+
+### Trust
+
+- Project `plugins.allow` / `plugins.deny` in `harness.toml`.
+- Org may pin hashes later. v1 may load from disk path only.
+- Plugin code runs in-process unless the plugin asks for a sandbox grant.
+- Third-party integrations never get CLI cookies. API keys only via `secret_ref`.
+- Disable is unload. Effects reverse. That is kernel law.
+
+Skills and hooks remain first-class seams. They can also ship as plugins of those kinds. A loose `SKILL.md` in the repo is still a skill; it does not need a full package if policy allows repo skills.
 
 ## Plan mode
 
@@ -198,12 +286,13 @@ These are not project options:
 - Profile = seat HOME. Preset = plugin tree.
 - Customer classification never uses a personal profile or a personal account.
 - Own kernel. Not the Cordis package. Not a dsh fork.
+- Extra capability is a plugin. Plugins cannot unmount Policy or Permission Broker.
 - BSL 1.1.
 
 ## v0 vs later
 
 v0 still ships the ACP + seat path: `ravand which`, `ravand run --format jsonl`, isolated HOMEs, permission ask, session, audit.
 
-Skills, hooks, memory, plan mode, steer, ACP server: v1. Cron, HTTP SSE, webhooks, native loop, sandbox plugins, workflows, bus, cloud users, eval store: later. The seams exist in this doc so HLD and SCHEMA do not paint themselves into a CLI-only or Postgres-only corner.
+Skills, hooks, plugin host, memory (file store + scopes), plan mode, steer, ACP server: v1. Graph/Postgres memory stores, cron, HTTP SSE, webhooks, native loop, sandbox plugins, workflows, bus, cloud users, eval store: later.
 
 Next: [Compared with OpenClaw, Hermes, Grok Build](COMPARE-PEERS.md)

@@ -89,6 +89,8 @@ v0 is **one process**. Do not stand up a bus or Postgres until v2 flags exist.
 - Do not wrap vendor CLI HTTP APIs. Native loop (later) talks to the provider only through the named account plugin.
 - Do not scrape TUI output. Structured ACP or the native loop plugin only.
 - Do not add the Cordis package as the kernel. Do not fork dsh.
+- Do not add a second plugin runtime. The kernel is the plugin host.
+- Do not read memory across a denied isolation scope.
 
 ### Implementation order (do not skip)
 

@@ -27,9 +27,10 @@ Exit: you can run Ravand Agents on a real repo with Grok Build logged into the p
 - Sandbox seam
 - `harness.toml` committed per repo
 - ACP server mode so Zed / VS Code attach to `ravand`
+- Plugin host: `ravand plugin add|list`, kinds in MODULAR.md
 - Skills allow list (`SKILL.md`)
 - Hooks (`tool.pre` fail closed)
-- Classified memory store
+- Memory: isolation scopes + store plugins (file default)
 - Plan mode (`human = "plan"`)
 - `ravand steer <sessionId>`
 - Load target repo `AGENTS.md` when policy allows

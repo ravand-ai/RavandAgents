@@ -51,7 +51,14 @@ allow = ["review-diff"]
 # { on = "tool.pre", command = ["./hooks/pre.sh"] }
 
 [memory]
-enabled = true
+# isolation = "project" | "user" | "profile" | "org" | "account" | "session"
+# store = "file" | "sqlite" | "postgres" | "graph"
+isolation = "project"
+store = "file"
+
+[plugins]
+# allow = ["acme.jira"]
+# deny = []
 
 [cron]
 # jobs = [{ id = "morning", spec = "0 9 * * 1-5", prompt = "status" }]
@@ -117,6 +124,10 @@ type ResolvedPolicy = {
   human?: "off" | "ask" | "approver" | "plan"
   skillsAllow?: string[]
   agentsMd?: boolean
+  memoryIsolation?: "session" | "user" | "profile" | "project" | "org" | "account" | string
+  memoryStore?: "file" | "sqlite" | "postgres" | "graph" | string
+  pluginsAllow?: string[]
+  pluginsDeny?: string[]
 }
 ```
 
@@ -265,6 +276,30 @@ type SessionEvent = {
 ```
 
 No secret fields. No cookie paths. `text.delta` is assistant text only.
+
+## Plugin manifest
+
+```toml
+id = "acme.jira"
+version = "1.2.0"
+kind = "integration"
+inject = ["policy", "bus"]
+```
+
+`kind` is one of: `function`, `tool`, `service`, `loop`, `sandbox`, `bus`, `memory`, `account`, `skill`, `hook`, `mcp`, `trigger`, `workflow`, `pipeline`, `integration`, `eval`. Several kinds require several grants.
+
+## Memory space
+
+```ts
+type MemorySpace = {
+  id: string
+  isolation: "session" | "user" | "profile" | "project" | "org" | "account" | string
+  store: "file" | "sqlite" | "postgres" | "graph" | string
+  classification: "public" | "internal" | "customer"
+}
+```
+
+Every read/write carries `isolation` + owner id. The store plugin must key by that. Cross-scope access is `FailClosed`.
 
 ## CLI exit codes
 

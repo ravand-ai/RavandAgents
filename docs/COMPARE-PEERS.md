@@ -39,7 +39,7 @@ Y = they ship it now. P = we designed it (often later than v0). N = we have not 
 | Control UI / dashboard | **Y** | dashboard/PTY | TUI | N |
 | Skills + marketplace | **Y** (ClawHub) | Y | Y | P (skills, no marketplace) |
 | Hooks on tool/file events | Y | Y | **Y** | P |
-| Memory across sessions | Y | **Y** | Y | P (classified memory) |
+| Memory across sessions | Y | **Y** | Y | P (scoped + swappable store) |
 | Context compression / lineage | N | **Y** | some | N |
 | Cron / scheduled agents | Y | **Y** | N | P |
 | Plan mode (approve before write) | some | some | **Y** | P |

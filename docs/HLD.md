@@ -25,7 +25,7 @@ Human / IDE / CI / cloud user
    Loop (ACP child and/or native)
    Tools · Functions · MCP · Subagents · Skills · Hooks
    Sandbox · Human verification · Plan · Steer
-   Memory · Cron · Stream
+   Memory · Plugins · Cron · Stream
    Workflow · Pipeline
    Session · Audit · Eval · Metrics
         │
@@ -43,11 +43,12 @@ Seam list and project rules: [MODULAR.md](MODULAR.md).
 4. Secrets never live in `harness.toml`, the bus, or work audit (unless `RAVAND_AUDIT_BODIES=1`). CLI cookies stay in the profile HOME and are not read. API keys live in the profile secret store or the cloud vault.
 5. Workflows and pipelines may both bind tools, functions, and subagents. Missing bindings fail closed.
 6. Human verification, when required, blocks the action until allow or timeout-deny. Plan mode blocks writes until the plan is allowed.
-7. v0 = one process, ACP + seats + JSONL stream. Skills, hooks, memory, plan, steer, ACP server are v1. Native loop, cron, HTTP, webhooks, workflows, bus, cloud users, eval store come later.
+7. v0 = one process, ACP + seats + JSONL stream. Plugin host, skills, hooks, memory (file store), plan, steer, ACP server are v1. Native loop, cron, HTTP, webhooks, workflows, bus, cloud users, eval store come later.
 8. The bus moves **tasks**, never credentials. Default bus is Postgres + PGMQ. Kafka and others are providers of the same seam. Do not import the bus driver from Policy or Runtime.
 9. Kernel services use dependency injection by key. Packages depend on seams, not on Postgres.
 10. Every task has `task_id` + a trace. Fail closed if policy, permission, or account cannot be evaluated.
 11. Policy and Permission Broker cannot be unmounted.
+12. Extra capability arrives as a plugin with a kind and grants. Memory isolation is policy. Memory store is a plugin.
 
 ## Services
 
@@ -146,7 +147,7 @@ Commands on `tool.pre`, `tool.post`, `file.write`, `run.start`, `run.end`. Pre-h
 
 ### Memory
 
-Classified durable notes under the profile. Injected only through Policy. Not the audit log.
+Durable notes. Isolation scope (`session`, `user`, `profile`, `project`, `org`, `account`, or custom) is policy. Store (`file`, `sqlite`, `postgres`, `graph`, other) is a plugin. Injected only through Policy. Not the audit log. Cross-scope merge fails closed. See [MODULAR.md](MODULAR.md).
 
 ### Cron
 
@@ -197,7 +198,11 @@ Eval store later: golden tasks, account vs account, judge plugin.
 
 ### Plugin Host
 
-MCP servers, functions, and subagents are selective per project. Slack and other channels later. Not v0.
+The kernel is the host. One install path for functions, services, tools, loops, sandboxes, buses, memory stores, skills, hooks, MCP, triggers, workflows, pipelines, integrations, and evals.
+
+Manifest: `id`, `version`, `kind`, `inject`, `grants`. Unknown kind or missing grant fails closed. Plugins cannot unmount Policy or Permission Broker. Unload reverses effects.
+
+`ravand plugin add|list`. Project `plugins.allow` / `plugins.deny`. Details in [MODULAR.md](MODULAR.md).
 
 ## Run path
 
