@@ -57,6 +57,7 @@ Process lock:
 - One GitHub issue → one branch `N-short-description` → one PR.
 - If you discover extra work, open a new GitHub issue. Do not grow the current branch.
 - CodeQL on push and PR. A CodeQL alert becomes a new issue, not a silent extra commit on the wrong branch.
+- Safe work (SECURITY.md holds, TDD, no extra deps, disjoint files) does not wait for human approval to implement or commit. Human still merges to `main`.
 
 ## Phases
 

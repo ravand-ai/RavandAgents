@@ -114,6 +114,7 @@ Read first: [README.md](README.md), HLD services list.
 
 - Python 3.12+, uv, `pyproject.toml` at the repo root.
 - uv workspace. Packages match HLD service names under `packages/`.
+- Build backend: `uv_build` only. Do not add hatchling.
 - `packages/cli` console script: `ravand`
 - pytest. First test: `ravand --help` or missing command exits non-zero with `not implemented`.
 - Commands that print “not implemented” except `ravand which` after slice 1.
