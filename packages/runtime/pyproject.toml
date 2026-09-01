@@ -8,6 +8,7 @@ dependencies = [
     "ravand-permissions",
     "ravand-sessions",
     "ravand-audit",
+    "ravand-registry",
 ]
 
 [build-system]

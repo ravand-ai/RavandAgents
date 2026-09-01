@@ -36,9 +36,15 @@ def _harness(repo: Path, *, deny: list[str] | None = None) -> None:
     )
 
 
-def _run(repo: Path, home: Path, prompt: str) -> subprocess.CompletedProcess[str]:
+def _run(
+    repo: Path,
+    home: Path,
+    prompt: str,
+    extra_env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["RAVAND_HOME"] = str(home)
+    env.update(extra_env or {})
     return subprocess.run(
         ["uv", "run", "ravand", "run", "--format", "jsonl", prompt],
         cwd=repo,
@@ -145,3 +151,43 @@ def test_denied_run_writes_agent_denied_without_spawn(tmp_path: Path) -> None:
     blob = audit_path.read_text(encoding="utf-8") + result.stdout + result.stderr
     for marker in FORBIDDEN:
         assert marker not in blob
+
+
+def test_auth_required_exits_2_no_session_no_spawn(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    _harness(repo)
+    marker = tmp_path / "spawned-after-auth-failure"
+    result = _run(
+        repo,
+        home,
+        "say hi",
+        {"FAKE_ACP_AUTH": "required", "FAKE_ACP_STATE": str(marker)},
+    )
+    assert result.returncode == 2, result.stderr
+    assert "login" in result.stderr.lower()
+    assert not marker.exists()
+    assert not list((home / "sessions").glob("*.json"))
+
+    audit_path = home / "audit.jsonl"
+    assert audit_path.is_file()
+    audit_events = [
+        json.loads(line)
+        for line in audit_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    audit_types = [event["type"] for event in audit_events]
+    assert "auth.missing" in audit_types
+    blob = audit_path.read_text(encoding="utf-8") + result.stdout + result.stderr
+    for marker_text in FORBIDDEN:
+        assert marker_text not in blob
+
+
+def test_auth_cached_token_continues_run(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    _harness(repo)
+    result = _run(repo, home, "say hi", {"FAKE_ACP_AUTH": "cached"})
+    assert result.returncode == 0, result.stderr
+    events = _events(result.stdout)
+    assert any(e.get("text") == "hello-from-fake" for e in events)
