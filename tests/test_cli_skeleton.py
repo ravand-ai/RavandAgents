@@ -32,11 +32,9 @@ def test_ravand_which_exits_zero_on_this_repo() -> None:
     assert "grok" in result.stdout
 
 
-def test_unknown_command_is_not_implemented() -> None:
+def test_run_without_prompt_fails() -> None:
     result = _ravand("run")
     assert result.returncode != 0
-    combined = (result.stdout + result.stderr).lower()
-    assert "not implemented" in combined
 
 
 def test_python_is_312_or_newer() -> None:

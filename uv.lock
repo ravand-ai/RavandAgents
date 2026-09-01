@@ -108,6 +108,7 @@ dependencies = [
     { name = "ravand-policy" },
     { name = "ravand-profile" },
     { name = "ravand-registry" },
+    { name = "ravand-runtime" },
 ]
 
 [package.metadata]
@@ -115,6 +116,7 @@ requires-dist = [
     { name = "ravand-policy", editable = "packages/policy" },
     { name = "ravand-profile", editable = "packages/profile" },
     { name = "ravand-registry", editable = "packages/registry" },
+    { name = "ravand-runtime", editable = "packages/runtime" },
 ]
 
 [[package]]
@@ -141,6 +143,18 @@ source = { editable = "packages/registry" }
 name = "ravand-runtime"
 version = "0.0.0"
 source = { editable = "packages/runtime" }
+dependencies = [
+    { name = "ravand-permissions" },
+    { name = "ravand-policy" },
+    { name = "ravand-profile" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ravand-permissions", editable = "packages/permissions" },
+    { name = "ravand-policy", editable = "packages/policy" },
+    { name = "ravand-profile", editable = "packages/profile" },
+]
 
 [[package]]
 name = "ravand-sessions"
