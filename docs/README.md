@@ -50,7 +50,7 @@ Do not start this path until you have finished the design path.
 | 5 | OTel spans if `OTEL_EXPORTER_OTLP_ENDPOINT` is set | SCHEMA OTel | 6 |
 | 6 | Bus worker, PGMQ default | HLD Bus, SCHEMA TaskMessage, MODULAR bus seam | stop. `ravand run` must already work |
 
-Prompt text for each slice lives in [AGENTS.md](../AGENTS.md). Copy one slice. Do not ask an agent for Slice 6 before Slice 2 works on one machine.
+Prompt text for each slice lives in [AGENTS.md](../AGENTS.md). Copy one slice. Slice 2 works on this repo. Leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open. Do not implement issue 51.
 
 To implement with Grok, Kimi, and Cursor, read [SECURITY.md](SECURITY.md) then [BOOTSTRAP.md](BOOTSTRAP.md). One GitHub issue per builder run.
 
