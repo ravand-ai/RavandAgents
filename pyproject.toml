@@ -11,6 +11,8 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8",
+    "ravand-sessions",
+    "ravand-audit",
 ]
 
 [tool.uv.workspace]
@@ -23,6 +25,8 @@ ravand-profile = { workspace = true }
 ravand-registry = { workspace = true }
 ravand-runtime = { workspace = true }
 ravand-permissions = { workspace = true }
+ravand-sessions = { workspace = true }
+ravand-audit = { workspace = true }
 
 [tool.uv]
 package = false
