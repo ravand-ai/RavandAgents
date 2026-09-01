@@ -13,9 +13,9 @@ The wedge is mixed seats under policy: `ravand which` / `ravand run` / audit. Gr
 
 We over-built `ravand tui` (Textual, chat bubbles, copy, keys, timers). It is optional chrome on v0.
 
-**Stop new TUI tickets** until:
+**Stop new TUI tickets** until the four SUCCESS checks hold.
 
-1. [Issue #9](https://github.com/ravand-ai/RavandAgents/issues/9) dogfood lands through `ravand run` (a real commit + PR, not a talk-only `run.ended ok`)
+1. Dogfood #9 through `ravand run` — **done** ([#9](https://github.com/ravand-ai/RavandAgents/issues/9) / PR [#60](https://github.com/ravand-ai/RavandAgents/pull/60))
 2. The four SUCCESS checks hold on this repo
 
 [Issue #51](https://github.com/ravand-ai/RavandAgents/issues/51) (strip TUI junk) waits. Scripts keep `ravand run --format jsonl`.
