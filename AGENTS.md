@@ -59,7 +59,7 @@ Use the `reviewer` agent for Review and the pull request draft when the harness 
 
 ## Adopted product rules
 
-You are implementing Ravand Agents, a local (then distributed) ACP control plane for subscription coding agents.
+You are implementing Ravand Agents, a modular agent control plane. v0 is local ACP over subscription CLIs. Later slices add named LLM accounts, a native loop, sandboxes, workflows, and cloud users.
 
 Read this file before writing code. Follow it over conversational memory.
 
@@ -80,13 +80,15 @@ v0 is **one process**. Do not stand up Postgres or PGMQ until v2 flags exist.
 
 ### Hard constraints
 
-- No provider API keys in Ravand Agents config. If a CLI needs a key, refuse and print the vendor login command.
-- Never copy or log credential files from profile HOMEs.
-- Work profile MUST NOT run on a repo whose policy says `profile = "personal"` and the reverse.
-- If Policy or Permission Broker cannot decide: **fail closed**. Do not spawn.
+- Do not put secrets in `harness.toml`, PGMQ, or work audit (unless `RAVAND_AUDIT_BODIES=1`).
+- Never copy or log vendor CLI cookie files from profile HOMEs. API keys live in the profile secret store or cloud vault. Use them. Do not log them.
+- If a subscription CLI needs a login, refuse and print the vendor login command.
+- Work profile MUST NOT run on a repo whose policy says `profile = "personal"` and the reverse. Customer classification never uses a personal account.
+- If Policy, Permission Broker, or account resolution cannot decide: **fail closed**. Do not spawn.
 - Do not invent an ACP dialect. Use `@agentclientprotocol/sdk` (TypeScript) or the official Python/Rust SDK.
-- Do not wrap vendor HTTP APIs.
-- Do not scrape TUI output. Structured ACP only.
+- Do not wrap vendor CLI HTTP APIs. Native loop (later) talks to the provider only through the named account plugin.
+- Do not scrape TUI output. Structured ACP or the native loop plugin only.
+- Do not add the Cordis package as the kernel. Do not fork dsh.
 
 ### Implementation order (do not skip)
 

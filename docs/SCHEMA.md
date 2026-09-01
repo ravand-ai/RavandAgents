@@ -2,7 +2,7 @@
 
 Reading: [Docs map](README.md)
 
-Previous: [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md)
+Previous: [Modular runtime](MODULAR.md)
 Next: [Governance](GOVERNANCE.md)
 
 Canonical samples: [examples/harness.toml](../examples/harness.toml), [examples/policy.user.toml](../examples/policy.user.toml).
@@ -32,8 +32,26 @@ command = ["kimi", "acp"]
 command = ["cursor-agent", "acp"]
 
 [mcp]
-# v2+
+# v1+
 # servers = [{ name = "insforge", command = ["npx", "@insforge/mcp"] }]
+```
+
+Later fields (not in the v0 example file). Names only. Secrets stay out of git:
+
+```toml
+loop = "acp"                    # acp | native
+sandbox = "repo-only"           # none | repo-only | container | remote
+human = "ask"                   # off | ask | approver
+
+[accounts]
+allow = ["grok-work", "claude-company"]
+deny = ["claude-personal"]
+
+[workflow]
+# graph of steps; each step may bind tools, functions, subagents
+
+[pipeline]
+# ordered stages; same bindings as workflow
 ```
 
 ## ~/.ravand/config.toml (user)
@@ -49,6 +67,15 @@ allow = ["claude", "grok", "cursor"]
 [profiles.personal]
 home = "~/.ravand/profiles/personal"
 allow = ["kimi", "grok", "opencode", "dsh"]
+
+# Named accounts later. Id is local to the profile. kind is cli | api.
+# [accounts.grok-work]
+# kind = "cli"
+# agent = "grok"
+# [accounts.claude-api]
+# kind = "api"
+# provider = "anthropic"
+# secret_ref = "vault:work/claude-api"
 ```
 
 ## ResolvedPolicy (internal)
@@ -64,6 +91,10 @@ type ResolvedPolicy = {
   classification: "public" | "internal" | "customer"
   command: string[]
   mcp: { name: string; command: string[] }[]
+  accounts?: string[]
+  loop?: "acp" | "native"
+  sandbox?: "none" | "repo-only" | "container" | "remote"
+  human?: "off" | "ask" | "approver"
 }
 ```
 

@@ -1,30 +1,29 @@
-# Ravand Agents: Subscription Agent Control Plane
+# Ravand Agents: Modular Agent Control Plane
 
 Reading: [docs map](docs/README.md)
 
 Previous: [docs map](docs/README.md)
 Next: [Roadmap](docs/ROADMAP.md)
 
-Ravand Agents sits above coding-agent CLIs you already pay for (Claude Code, Grok Build, Kimi Code, Cursor Agent, later OpenCode / DeepSeek Harness).
+Ravand Agents is a modular control plane for coding agents. A project picks providers, accounts, loops, tools, MCP, sandbox, workflows, and pipelines.
 
-It does **not** call model APIs and does **not** hold provider keys.
-It **selects**, **isolates**, **queues**, and **records** those CLIs over ACP (Agent Client Protocol).
+v0 sits above subscription CLIs you already pay for (Claude Code, Grok Build, Kimi Code, Cursor Agent, DeepSeek Harness) over ACP. Later, a native loop may use named LLM accounts. Secrets never go in git. Policy fail-closes.
 
 ```
-you / IDE / CI
+you / IDE / CI / cloud user
       │
       ▼
-    ravand       policy · profile · queue · audit
-      │  ACP stdio
+    ravand       kernel · policy · profile · accounts
+      │          loop · tools · sandbox · workflow
       ▼
-vendor CLI already logged in
+vendor CLI and/or native provider API
 ```
 
 ## Problem
 
 People and small teams hold mixed seats: company Cursor, personal Kimi, work Claude, Grok on another laptop. Routers that want API keys do not fit. Sharing one login across repos is a ToS and employment problem.
 
-The unit of value for Ravand Agents: **which licensed agent may touch this repo, under which profile, on which machine.**
+The unit of value for Ravand Agents: **which account, under which profile, with which tools and sandbox, may touch this repo.**
 
 ## What v0 is
 
@@ -49,6 +48,7 @@ docs/
   ROADMAP.md
   HLD.md
   DSH-CORDIS.md          # Cordis-shaped kernel, not the Cordis package
+  MODULAR.md             # accounts, loops, workflows, sandbox, cloud
   SCHEMA.md
   GOVERNANCE.md
 examples/
@@ -71,10 +71,10 @@ packages/                 # implement here; empty until generated
 
 ## Non-goals
 
-- New coding agent loop
-- HTTP proxy to Anthropic / xAI / Moonshot
-- Putting OAuth tokens in Postgres or PGMQ
-- Sharing one company seat across humans
+- Wrapping a vendor CLI's HTTP or scraping TUI output
+- Putting secrets in git, PGMQ, or work audit
+- Sharing one company CLI cookie across humans
+- Using the Cordis package as our kernel, or forking dsh
 - Being a general AI-governance GRC suite or a general AIOps platform
 
 ## License

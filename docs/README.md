@@ -21,13 +21,14 @@ Do this sequence. Each file names the previous file and the next file at the top
 1. [Product README](../README.md). What Ravand Agents is, what it is not, the v0 commands.
 2. [Roadmap](ROADMAP.md). v0 on one machine, then v1 humans, v2 queue, v3 control plane.
 3. [HLD](HLD.md). Services, run path, trust, deployment.
-4. [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md). Architecture we study. Our kernel. The few differences. Proposal until accepted into HLD.
-5. [Schema](SCHEMA.md). `harness.toml`, user config, session, audit, queue payloads.
-6. [Governance](GOVERNANCE.md). Fail closed. Not GRC. Not AIOps. Classification rules.
-7. [examples/harness.toml](../examples/harness.toml) and [examples/policy.user.toml](../examples/policy.user.toml). Canonical samples. SCHEMA.md must match them.
-8. [AGENTS.md](../AGENTS.md) from "Adopted product rules" down. How an implementer is allowed to build. Skip the stack/verify header unless you are running the task protocol.
+4. [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md). Architecture we study. Our kernel. The few differences.
+5. [Modular runtime](MODULAR.md). Accounts, loops, workflows, sandbox, cloud access, evals.
+6. [Schema](SCHEMA.md). `harness.toml`, user config, session, audit, queue payloads.
+7. [Governance](GOVERNANCE.md). Fail closed. Not GRC. Not AIOps. Classification rules.
+8. [examples/harness.toml](../examples/harness.toml) and [examples/policy.user.toml](../examples/policy.user.toml). Canonical v0 samples. SCHEMA.md must match them.
+9. [AGENTS.md](../AGENTS.md) from "Adopted product rules" down. How an implementer is allowed to build. Skip the stack/verify header unless you are running the task protocol.
 
-After step 8 you know the product. The next design work is a new doc only if HLD or SCHEMA cannot answer the question. Do not invent a service that HLD does not name.
+After step 9 you know the product. The next design work is a new doc only if HLD, MODULAR, or SCHEMA cannot answer the question. Do not invent a service that HLD does not name.
 
 ## Build path (later, one slice)
 
@@ -54,7 +55,8 @@ Prompt text for each slice lives in [AGENTS.md](../AGENTS.md). Copy one slice. D
 | [../README.md](../README.md) | What the product is | [ROADMAP.md](ROADMAP.md) |
 | [ROADMAP.md](ROADMAP.md) | What ships in v0, v1, v2, v3 | [HLD.md](HLD.md) |
 | [HLD.md](HLD.md) | Which services exist and how a run flows | [DSH-CORDIS.md](DSH-CORDIS.md) |
-| [DSH-CORDIS.md](DSH-CORDIS.md) | Cordis architecture we study, kernel we write, differences we keep | [SCHEMA.md](SCHEMA.md) |
+| [DSH-CORDIS.md](DSH-CORDIS.md) | Cordis architecture we study, kernel we write, differences we keep | [MODULAR.md](MODULAR.md) |
+| [MODULAR.md](MODULAR.md) | Accounts, loops, workflows, sandbox, cloud, evals | [SCHEMA.md](SCHEMA.md) |
 | [SCHEMA.md](SCHEMA.md) | Exact files, types, env vars, exit codes | [GOVERNANCE.md](GOVERNANCE.md) |
 | [GOVERNANCE.md](GOVERNANCE.md) | What we refuse to become | examples, then AGENTS.md |
 | [../examples/harness.toml](../examples/harness.toml) | Repo policy sample | [../examples/policy.user.toml](../examples/policy.user.toml) |
@@ -63,4 +65,4 @@ Prompt text for each slice lives in [AGENTS.md](../AGENTS.md). Copy one slice. D
 
 ## If a file disagrees
 
-`examples/harness.toml` and `examples/policy.user.toml` win for sample values. SCHEMA.md must copy them. HLD.md wins for service names. AGENTS.md wins for slice order and fail-closed rules. This map wins for reading order.
+`examples/harness.toml` and `examples/policy.user.toml` win for v0 sample values. SCHEMA.md must copy them. HLD.md wins for service names. MODULAR.md wins for seams (accounts, loops, workflows). AGENTS.md wins for slice order and fail-closed rules. This map wins for reading order.

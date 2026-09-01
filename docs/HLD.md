@@ -3,42 +3,48 @@
 Reading: [Docs map](README.md)
 
 Previous: [Roadmap](ROADMAP.md)
-Next: [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md)
+Next: [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md), then [Modular runtime](MODULAR.md)
 
-Status: v0.2  
-Style: local-first, then Postgres/PGMQ workers  
-I/O with agents: ACP v1 JSON-RPC over stdio only
+Status: v0.3  
+Style: local-first, then Postgres/PGMQ workers and cloud users  
+Kernel: ours, Cordis-shaped. Not the Cordis package.  
+I/O with agents: ACP v1 stdio and/or a native loop, both behind policy.
 
 ## Context
 
-Users run vendor coding-agent CLIs on subscription logins. Ravand Agents is the control plane: policy, tenancy, distribution, observability.
+Ravand Agents is a modular control plane and runtime. A project picks providers, accounts, loops, tools, MCP, sandbox, workflows, and pipelines. People hold mixed seats and mixed API keys. Policy says which of those may touch this repo.
 
 ```
-Human / IDE / CI
+Human / IDE / CI / cloud user
         │
         ▼
      Gateway
         │
- Policy + Profile + Registry
-        │
-   ACP Runtime ──► vendor CLI
-        │
- Permission · Session · Audit
+ Ravand kernel (plugins)
+   Policy · Profile · Accounts · Registry
+   Loop (ACP child and/or native)
+   Tools · Functions · MCP · Subagents
+   Sandbox · Human verification
+   Workflow · Pipeline
+   Session · Audit · Eval · Metrics
         │
  Dispatcher (v2) ── PGMQ ── Worker machines
-        │
- Observability (OTLP)
 ```
+
+Seam list and project rules: [MODULAR.md](MODULAR.md).
 
 ## Design rules
 
-1. Vendor harness owns the model loop. Ravand Agents never wraps provider HTTP.
-2. Every run has a **profile**. Profile = isolated HOME / credential dir.
-3. Every repo has **policy** (`harness.toml`). Policy beats flags except audited override.
-4. ACP is the only agent I/O. MCP is optional, attached at `session/new`.
-5. v0 = one process (modules). v2 = Postgres + PGMQ + workers.
-6. PGMQ moves **tasks**, never credentials.
-7. Every task has `task_id` + a trace. Fail closed if policy cannot be evaluated.
+1. Every run has a **profile** (seat HOME) and a **preset** (plugin tree). Policy beats flags except audited override.
+2. Accounts are named. One vendor may have many CLI logins and many API keys. The project names which accounts may run.
+3. Two model paths: subscription CLI over ACP, or native loop with a named API account. Do not wrap a vendor CLI's HTTP. Do not scrape TUI output.
+4. Secrets never live in `harness.toml`, PGMQ, or work audit (unless `RAVAND_AUDIT_BODIES=1`). CLI cookies stay in the profile HOME and are not read. API keys live in the profile secret store or the cloud vault.
+5. Workflows and pipelines may both bind tools, functions, and subagents. Missing bindings fail closed.
+6. Human verification, when required, blocks the action until allow or timeout-deny.
+7. v0 = one process, ACP + seats. Native loop, sandbox plugins, workflows, cloud users, eval store come later. PGMQ is v2.
+8. PGMQ moves **tasks**, never credentials.
+9. Every task has `task_id` + a trace. Fail closed if policy, permission, or account cannot be evaluated.
+10. Policy and Permission Broker cannot be unmounted.
 
 ## Services
 
@@ -50,8 +56,9 @@ Logical API:
 
 - `Which(cwd) → ResolvedPolicy + command`
 - `Run(cwd, prompt, agent?) → stream SessionEvent`
-- `Login(profile, agent) → hint | status`
+- `Login(profile, account) → hint | status`
 - `Cancel(sessionId)`
+- later: `Approve(taskId)`, `Eval(taskId)`, workflow/pipeline start
 
 Modes:
 
@@ -76,7 +83,9 @@ Maps `profile → { homeDir, env, allowedAgents }`.
 ~/.ravand/profiles/personal/.grok
 ```
 
-Creates dirs. Probes login. Hands Runtime a scrubbed env. Does not read token files.
+Creates dirs. Probes CLI login. Hands Runtime a scrubbed env. Does not read vendor cookie files.
+
+Named **accounts** live on the profile: CLI adapters and API-key accounts. See [MODULAR.md](MODULAR.md).
 
 ### Registry
 
@@ -97,6 +106,8 @@ Spawn + handshake + stream + overflow trigger.
 
 `initialize` → optional `authenticate` → `session/new|load` → `session/prompt` → `session/close`.
 
+Native loop (later) is a different runtime plugin on the same Permission Broker, Session, Audit, and Sandbox seams. v0 does not ship it.
+
 ### Permission Broker
 
 Answers `session/request_permission`.
@@ -107,6 +118,16 @@ Answers `session/request_permission`.
 | approve-reads | allow | ask | deny | ask |
 | deny-writes | allow | deny | deny | deny |
 | ask | ask | ask | deny | ask |
+
+Human verification in the cloud is the same broker with a named approver and a timeout. Timeout is deny.
+
+### Sandbox
+
+Seam. Provider is none, repo-only OS, container, or remote. Customer classification cannot choose `none` if the project writes files or runs shell.
+
+### Workflow and pipeline
+
+Both are runners. Workflow is a graph. Pipeline is ordered stages. Either may attach tools, functions, and subagents. A step fails closed if a binding is denied or missing.
 
 ### Session Store
 
@@ -137,9 +158,15 @@ Workspace must exist on the worker. Queue does not ship git.
 OpenTelemetry GenAI conventions + `ravand.*` attributes.
 No-op exporter if OTLP unset.
 
-### Plugin Host (later)
+### Eval and metrics
 
-MCP (InsForge), channels (Slack), judges, flows. Not v0.
+Metrics always: duration, result enum, tool calls, permission denials, human-wait. OTLP if set.
+
+Eval store later: golden tasks, account vs account, judge plugin.
+
+### Plugin Host
+
+MCP servers, functions, and subagents are selective per project. Slack and other channels later. Not v0.
 
 ## Run path
 
@@ -179,14 +206,15 @@ Idempotency: `task_id`. Session Store rejects second start if status is running|
 | Data | Where | Ravand Agents may read? |
 |---|---|---|
 | Policy | git + user config | yes |
-| Vendor tokens | profile HOME, vendor files | **no** |
+| Vendor CLI cookies | profile HOME, vendor files | **no** |
+| LLM API keys | profile secret store or cloud vault | **use, never log** |
 | Prompts | memory + optional events | work: default no persist |
 | Task metadata | sessions / Postgres | yes |
 
 ## Deployment
 
 - v0: single binary on the laptop that has the CLIs
-- v2: Gateway + Postgres; workers on machines that have both the repo and the logins
-- Never SaaS that stores company Claude/Grok cookies
+- v2: Gateway + Postgres; workers on machines that have the repo and the allowed accounts
+- Cloud: users and roles. Org vault for API keys. Still never store company CLI cookies in SaaS.
 
-Next: [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md)
+Next: [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md), then [Modular runtime](MODULAR.md)

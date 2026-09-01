@@ -18,8 +18,8 @@ This file is the gap list so features are added on purpose.
 
 | Control | Service |
 |--------|---------|
-| Who (which seat) | Profile HOME |
-| What agent | Policy + Registry |
+| Who (which seat, which user) | Profile HOME, later cloud role |
+| What account | Policy + Registry + named accounts |
 | Where (which tree) | cwd + classification |
 | May it write | Permission Broker |
 | Tape | Audit + Session + PGMQ archive |
@@ -30,7 +30,7 @@ This file is the gap list so features are added on purpose.
 
 - Estate inventory
 - Signed evidence
-- Named human approver + timeout
+- Named human approver + timeout (product: v2, see MODULAR.md)
 - Kill switch across workers
 - Detect `claude` run outside Ravand Agents on a managed host (optional)
 
@@ -56,6 +56,6 @@ This file is the gap list so features are added on purpose.
 | internal | work, or personal if policy says so |
 | customer | work only |
 
-Never put customer prompts on a personal profile HOME.
+Never put customer prompts on a personal profile HOME or a personal account.
 
 Next: [examples/harness.toml](../examples/harness.toml), then [AGENTS.md](../AGENTS.md) from "Adopted product rules".

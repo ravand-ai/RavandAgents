@@ -3,13 +3,15 @@
 Reading: [Docs map](README.md)
 
 Previous: [HLD](HLD.md)
-Next: [Schema](SCHEMA.md)
+Next: [Modular runtime](MODULAR.md)
 
-Status: proposal. This file does not replace [HLD.md](HLD.md) until we accept the differences below.
+Status: accepted direction. Kernel is ours. Product seams are in [HLD.md](HLD.md) and [MODULAR.md](MODULAR.md).
 
 DeepSeek Harness (`dsh`) is DeepSeek's agent runtime. Cordis is the plugin kernel under it, and the architecture in the paper behind it.
 
-Ravand does **not** use Cordis as a dependency and does **not** run the Cordis package as its kernel. We write our own kernel. We take the Cordis architecture, then change it to fit Ravand: seats, fail closed, ACP-only, no model loop, no provider keys.
+Ravand does **not** use Cordis as a dependency and does **not** run the Cordis package as its kernel. We write our own kernel. We take the Cordis architecture, then change it to fit Ravand: seats, named accounts, fail closed, modular loops and tools.
+
+Loops, LLM keys, sandboxes, workflows, and MCP are product seams. They are not copied from the Cordis package. See [MODULAR.md](MODULAR.md).
 
 We do not fork `cordiverse/cordis` or `deepseek-harness`. We do not rebrand dsh.
 
@@ -40,13 +42,9 @@ Invariant in dsh: **model-visible means logged**. The append-only session log is
 
 dsh is MIT. It takes provider keys (`DEEPSEEK_API_KEY`). It owns tools and the turn/step loop.
 
-## What Ravand is today
+## What Ravand is
 
-[HLD.md](HLD.md) says Ravand sits **above** vendor CLIs. It selects, isolates, queues, and records them over ACP. It does not call model APIs. It does not hold provider keys. The vendor harness owns the model loop.
-
-Ravand **profile** means an isolated HOME / credential directory (`~/.ravand/profiles/work`). That is not a Cordis plugin tree.
-
-The roadmap already lists "Cordis custom loop as one registry row" under later/partners. The registry already has `dsh` as `dsh --profile acp`. That treats dsh as one backend, not as the architecture of Ravand.
+[HLD.md](HLD.md) and [MODULAR.md](MODULAR.md) say Ravand is a modular control plane: seats, named accounts, optional native loop, workflows, sandboxes. v0 still runs the ACP + seat path. dsh remains one ACP backend, not our architecture.
 
 ## Kernel: take the architecture, write our own
 
@@ -62,17 +60,17 @@ The kernel is a Ravand package (working name: the Ravand kernel). It is based on
 
 **Change for Ravand**
 
-- No `llm` service and no agent-loop service in the kernel.
+- LLM and agent-loop are optional seams, not the heart of the kernel. A project may use ACP children only.
 - Policy and Permission Broker cannot be unmounted. Fail closed is kernel law, not a plugin you patch out.
 - Profile in this kernel means the seat HOME. Plugin composition is a **preset**, not a dsh "profile".
-- The only child I/O the kernel allows toward an agent is ACP stdio.
-- The kernel never reads vendor token files.
+- Child I/O is ACP stdio and/or the native loop plugin. Do not wrap vendor CLI HTTP. Do not scrape TUI output.
+- The kernel never reads vendor cookie files. It may use named API keys from the secret store. It never logs them.
 
 **Do not**
 
 - Add `@deepseek-ai/cordis` or `cordiverse/cordis` as the runtime.
 - Copy Cordis source into `packages/` and rename symbols.
-- Implement dsh's `ctx.tools` execution pipeline.
+- Copy dsh's tool pipeline as our default. Tools are our seam, per project.
 
 ## Same shape, different kernel
 
@@ -91,21 +89,21 @@ The kernel is a Ravand package (working name: the Ravand kernel). It is based on
 
 These are the product differences. Do not drop them to look more like dsh.
 
-1. **No model loop.** The Ravand kernel does not grow an LLM adapter or an agent loop. Vendor CLIs own turns, tools, and prompts. dsh is a row in the registry, same as grok and claude.
+1. **Loop is a seam, not the product identity.** dsh is a coding agent. Ravand is a control plane that may run a native loop. dsh stays a registry row for the ACP path.
 
-2. **No provider keys.** Ravand config never holds API keys or vendor cookies. If a CLI needs a key, print the vendor login command and exit 2.
+2. **Keys are named accounts, never git.** `harness.toml` names accounts. Secrets live in the profile store or cloud vault. Vendor CLI cookies stay unread.
 
-3. **Profile means a seat first.** Ravand profile = isolated credential HOME plus allowed agents. A plugin preset may live *inside* that HOME. Do not rename the seat away. Plugin composition is a **preset**, never a dsh "profile".
+3. **Profile means a seat first.** Isolated HOME plus allowed accounts. Plugin composition is a **preset**.
 
-4. **Policy fail closed is not optional.** A sandbox plugin you can unmount is not enough. If Policy or Permission Broker cannot decide, do not spawn. A patch must not disable that.
+4. **Policy fail closed is not optional.** If Policy, Permission Broker, or account resolution cannot decide, do not run.
 
-5. **ACP is the only agent I/O.** Do not wrap vendor HTTP. Do not scrape TUI output. MCP attaches at `session/new` only.
+5. **No vendor-CLI HTTP wrap.** ACP for CLIs. Native API only through the account plugin. No TUI scrape. MCP is selective per project.
 
-6. **Classification.** Customer repos never run on a personal HOME. dsh has no work/personal seat rule.
+6. **Classification.** Customer repos never use a personal HOME or a personal account.
 
-7. **Own kernel, BSL.** Ravand is BSL 1.1. dsh and Cordis are MIT. Read their docs and the paper. Write the kernel ourselves. Do not depend on the Cordis package. Do not fork dsh.
+7. **Own kernel, BSL.** Do not depend on the Cordis package. Do not fork dsh.
 
-8. **v0 is still one process that spawns vendor ACP.** Creator mode, Code mode, and a web UI are not v0. Queue and workers stay v2.
+8. **v0 is ACP + seats.** Native loop, workflows, cloud users, eval store, and a web UI are later. Queue and workers stay v2.
 
 ## Word clash
 
@@ -126,32 +124,27 @@ Human / IDE / CI
    ravand CLI          Ravand kernel (Cordis-shaped)
         │
   plugins (seams)
-    policy · profile HOME · registry
-    acp-runtime · permission · session · audit
-        │  ACP stdio
+    policy · profile HOME · accounts · registry
+    loop (ACP and/or native) · tools · MCP · sandbox
+    permission · workflow · pipeline · session · audit
+        │
         ▼
- vendor CLI (grok | claude | cursor | kimi | dsh --profile acp)
+ vendor CLI and/or native provider API (named accounts)
 ```
 
-v0 plugin list matches today's packages: `policy`, `profile`, `registry`, `runtime`, `permissions`, `sessions`, `audit`, `cli`. There is no `llm` plugin and no `agent-loop` plugin.
+v0 plugins: `policy`, `profile`, `registry`, `runtime`, `permissions`, `sessions`, `audit`, `cli`. Later plugins: accounts, loop, sandbox, workflow, pipeline, eval.
 
-`dsh --profile acp` remains one registry command. A user who wants DeepSeek's loop runs that backend under a Ravand profile HOME, same as Grok.
+`dsh --profile acp` remains one registry command for the ACP path.
 
 ## What we will not copy
 
 - The Cordis npm/git package as our runtime
 - Cordis source copied into this repo
-- `ctx.llm` and DeepSeek API keys
-- Standard / Code / Minimal / Creator modes
-- In-process tool registry that executes bash and writes files for the model
+- dsh Standard / Code / Minimal / Creator modes as our product names
 - Live patch reload of the ACP stdio profile while a run owns stdin
 - MIT as the product license
 - A web UI in v0
 
-## Accept or reject
+HLD and [MODULAR.md](MODULAR.md) already hold this direction.
 
-HLD stays as written until this list is accepted.
-
-If accepted, the next doc change is HLD only: name our kernel, say it follows Cordis architecture after Ravand changes, add the word **preset** for plugin trees, keep profile as the seat, keep the eight differences. SCHEMA and slices do not grow a model loop. Do not add a Cordis dependency.
-
-Next: [Schema](SCHEMA.md) if you are still on the design path. Or say the differences are accepted and we patch [HLD.md](HLD.md).
+Next: [Modular runtime](MODULAR.md)
