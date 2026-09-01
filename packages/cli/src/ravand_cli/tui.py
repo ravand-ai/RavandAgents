@@ -123,7 +123,7 @@ class RavandApp(App[int]):
     """
 
     BINDINGS = [
-        Binding("ctrl+c", "quit", "Quit"),
+        Binding("ctrl+c", "interrupt", "Stop", priority=True),
         Binding("ctrl+j", "submit_prompt", "Send", priority=True),
         Binding("ctrl+enter", "submit_prompt", "Send", priority=True, show=False),
         Binding("ctrl+i", "submit_prompt", "Send", priority=True, show=False),
@@ -145,6 +145,8 @@ class RavandApp(App[int]):
         self._busy = False
         self._elapsed = 0
         self._activity = ""
+        self._quit_armed = False
+        self._cancel = threading.Event()
         self._agent_turn: Turn | None = None
         self._think_turn: Turn | None = None
 
@@ -155,7 +157,10 @@ class RavandApp(App[int]):
         yield Log(id="stream", highlight=False)
         yield Static(id="perm")
         with Vertical(id="composer"):
-            yield Static("enter newline  ·  ctrl+j send  ·  y/n tools  ·  ctrl+c quit", id="hint")
+            yield Static(
+                "enter newline  ·  ctrl+j send  ·  y/n tools  ·  ctrl+c stop  ·  ctrl+c twice quit",
+                id="hint",
+            )
             yield TextArea(id="prompt")
         yield Footer()
 
@@ -203,12 +208,33 @@ class RavandApp(App[int]):
         self._busy = True
         self._elapsed = 0
         self._activity = "working"
+        self._quit_armed = False
+        self._cancel.clear()
         box.disabled = True
         self._refresh_header(running=True)
         self.query_one("#transcript", VerticalScroll).mount(Turn("user", prompt))
         self._agent_turn = Turn("agent", "")
         self.query_one("#transcript", VerticalScroll).mount(self._agent_turn)
         self._run_agent(prompt)
+
+    def action_quit(self) -> None:
+        self.action_interrupt()
+
+    def action_interrupt(self) -> None:
+        if self._asking:
+            self._finish_ask(False)
+        if self._busy:
+            self._cancel.set()
+            self._activity = "stopping"
+            self._quit_armed = True
+            self._refresh_header(running=True)
+            self._write_sys("stopping  ·  ctrl+c again to quit")
+            return
+        if self._quit_armed:
+            self.exit(0)
+            return
+        self._quit_armed = True
+        self._write_sys("ctrl+c again to quit")
 
     def on_key(self, event) -> None:  # noqa: ANN001
         if not self._asking:
@@ -308,6 +334,7 @@ class RavandApp(App[int]):
             sink=self._sink,
             ask=self._ask,
             yes=False,
+            cancel=self._cancel,
         )
         self.call_from_thread(self._idle)
 

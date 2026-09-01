@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 import subprocess
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -43,7 +44,7 @@ def test_textual_app_streams_fake_run() -> None:
 
     seen: list[str] = []
 
-    def fake_runner(policy, prompt, *, cwd, sink, ask, yes):
+    def fake_runner(policy, prompt, *, cwd, sink, ask, yes, cancel=None):
         seen.append(prompt)
         sink({"type": "text.delta", "text": "hello-tui"})
         sink({"type": "run.ended", "status": "ok"})
@@ -73,7 +74,7 @@ def test_textual_app_permission_y_allows() -> None:
 
     allowed: list[bool] = []
 
-    def fake_runner(policy, prompt, *, cwd, sink, ask, yes):
+    def fake_runner(policy, prompt, *, cwd, sink, ask, yes, cancel=None):
         allowed.append(bool(ask) and ask("Fetch: https://example.com"))
         if allowed[-1]:
             sink({"type": "text.delta", "text": "fetched-ok"})
@@ -99,7 +100,7 @@ def test_textual_app_permission_y_allows() -> None:
 def test_textual_app_shows_user_bubble() -> None:
     from ravand_cli.tui import RavandApp, Turn
 
-    def fake_runner(policy, prompt, *, cwd, sink, ask, yes):
+    def fake_runner(policy, prompt, *, cwd, sink, ask, yes, cancel=None):
         sink({"type": "text.delta", "text": "ok"})
         sink({"type": "run.ended", "status": "ok"})
         return 0
@@ -126,7 +127,7 @@ def test_textual_app_shows_user_bubble() -> None:
 def test_textual_app_shows_tool_progress() -> None:
     from ravand_cli.tui import RavandApp, Turn
 
-    def fake_runner(policy, prompt, *, cwd, sink, ask, yes):
+    def fake_runner(policy, prompt, *, cwd, sink, ask, yes, cancel=None):
         sink({"type": "thinking.delta", "text": "planning the reply"})
         sink({"type": "tool.call", "tool": "Read AGENTS.md", "status": "in_progress"})
         sink({"type": "tool.result", "tool": "Read AGENTS.md", "status": "completed"})
@@ -162,7 +163,7 @@ def test_textual_app_shows_tool_progress() -> None:
 def test_textual_app_coalesces_thinking_words() -> None:
     from ravand_cli.tui import RavandApp, Turn
 
-    def fake_runner(policy, prompt, *, cwd, sink, ask, yes):
+    def fake_runner(policy, prompt, *, cwd, sink, ask, yes, cancel=None):
         sink({"type": "thinking.delta", "text": "The"})
         sink({"type": "thinking.delta", "text": " user"})
         sink({"type": "thinking.delta", "text": " wants"})
@@ -192,3 +193,46 @@ def test_textual_app_coalesces_thinking_words() -> None:
     asyncio.run(_go())
     assert len(think_bodies) == 1, think_bodies
     assert "The user wants" in think_bodies[0]
+
+
+def test_first_ctrl_c_cancels_run_second_quits() -> None:
+    from ravand_cli.tui import RavandApp, Turn
+
+    def fake_runner(policy, prompt, *, cwd, sink, ask, yes, cancel=None):
+        sink({"type": "text.delta", "text": "working"})
+        for _ in range(80):
+            if cancel is not None and cancel.is_set():
+                sink({"type": "run.ended", "status": "cancelled"})
+                return 0
+            time.sleep(0.05)
+        sink({"type": "run.ended", "status": "ok"})
+        return 0
+
+    app = RavandApp(cwd=ROOT, runner=fake_runner)
+    statuses: list[str] = []
+    exited: list[int] = []
+
+    async def _go() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            box = app.query_one("#prompt")
+            box.load_text("long job")
+            app.action_submit_prompt()
+            await pilot.pause(0.15)
+            app.action_interrupt()
+            for _ in range(40):
+                await pilot.pause(0.05)
+                statuses.clear()
+                for child in app.query_one("#transcript").children:
+                    if isinstance(child, Turn) and "cancelled" in child.body:
+                        statuses.append(child.body)
+                if statuses:
+                    break
+            assert app._busy is False
+            app.action_interrupt()
+            await pilot.pause(0.1)
+            exited.append(0 if app.return_value is None else int(app.return_value))
+
+    asyncio.run(_go())
+    assert statuses, "expected a cancelled line after first ctrl+c"
+    assert exited == [0]
