@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import socket
 import sys
 import threading
@@ -15,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from ravand_audit import AuditLog
+from ravand_hooks import run_tool_pre
 from ravand_permissions import decide_repo_only
 from ravand_policy import ResolvedPolicy, ravand_home, resolve
 from ravand_profile import ensure_profile_home
@@ -27,6 +29,7 @@ from ravand_runtime.acp import (
     is_auth_error,
     spawn,
 )
+from ravand_runtime.hooks import load_tool_pre_command
 from ravand_runtime.otel import Tracer
 from ravand_sessions import SessionRecord, SessionStore
 
@@ -304,8 +307,42 @@ def _attempt_run(
             tool = params.get("toolCall") or {}
             if not isinstance(tool, dict):
                 tool = {}
-            decision = decide_repo_only(tool, str(cwd))
             detail = str(tool.get("title") or tool.get("kind") or "tool")
+            hook_command = load_tool_pre_command(cwd)
+            if hook_command is not None:
+                hook_decision = run_tool_pre(
+                    hook_command,
+                    cwd,
+                    os.environ,
+                )
+                if hook_decision == "deny":
+                    log.emit(
+                        "hook.deny",
+                        task_id=task_id,
+                        profile=policy.profile,
+                        agent=policy.agent,
+                        detail=detail,
+                    )
+                    _emit(
+                        sink,
+                        {
+                            "type": "permission.ask",
+                            "tool": tool.get("title") or tool.get("kind"),
+                            "text": json.dumps(tool.get("rawInput") or {}),
+                        },
+                        task_id=task_id,
+                    )
+                    options = params.get("options") or []
+                    if not isinstance(options, list):
+                        options = []
+                    option_id = pick_option_id(options, "deny")
+                    return {
+                        "outcome": {
+                            "outcome": "selected",
+                            "optionId": option_id,
+                        }
+                    }
+            decision = decide_repo_only(tool, str(cwd))
             if decision != "deny" and not yes and ask is not None:
                 if not ask(detail):
                     decision = "deny"
