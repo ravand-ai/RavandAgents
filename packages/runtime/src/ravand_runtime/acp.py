@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import threading
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -59,10 +60,28 @@ def ensure_authenticated(
     raise AuthRequired(agent)
 
 
+_STDERR_DRAIN_CHUNK = 65536
+
+
+def _start_stderr_drain(proc: subprocess.Popen[bytes]) -> None:
+    if proc.stderr is None:
+        return
+
+    def _drain() -> None:
+        assert proc.stderr is not None
+        while True:
+            chunk = proc.stderr.read(_STDERR_DRAIN_CHUNK)
+            if not chunk:
+                break
+
+    threading.Thread(target=_drain, daemon=True).start()
+
+
 class AcpClient:
     def __init__(self, proc: subprocess.Popen[bytes]) -> None:
         self._proc = proc
         self._next_id = 1
+        _start_stderr_drain(proc)
 
     def close(self) -> None:
         if self._proc.stdin:

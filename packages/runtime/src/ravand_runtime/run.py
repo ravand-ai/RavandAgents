@@ -97,6 +97,35 @@ def _emit_session_update(
         _emit(sink, {"type": "text.delta", "text": text}, task_id=task_id)
 
 
+def pick_option_id(options: list[Any], decision: str) -> str:
+    """Map a broker decision to an advertised ACP permission optionId."""
+    opts = [o for o in options if isinstance(o, dict) and o.get("optionId")]
+    if decision == "allow":
+        for kind in ("allow_once", "allow_always"):
+            for opt in opts:
+                if str(opt.get("kind") or "").lower() == kind:
+                    return str(opt["optionId"])
+        for opt in opts:
+            oid = str(opt["optionId"]).lower()
+            if "allow" in oid:
+                return str(opt["optionId"])
+    else:
+        for kind in ("reject_once", "reject_always"):
+            for opt in opts:
+                if str(opt.get("kind") or "").lower() == kind:
+                    return str(opt["optionId"])
+        for opt in opts:
+            oid = str(opt["optionId"]).lower()
+            if "reject" in oid or "deny" in oid:
+                return str(opt["optionId"])
+    for opt in opts:
+        kind = str(opt.get("kind") or "").lower()
+        oid = str(opt["optionId"]).lower()
+        if kind.startswith("reject") or "reject" in oid or "deny" in oid:
+            return str(opt["optionId"])
+    raise AcpError(f"no permission option for decision {decision!r}")
+
+
 def _watch_cancel(client: AcpClient, cancel: threading.Event) -> None:
     def _run() -> None:
         cancel.wait()
@@ -231,11 +260,14 @@ def _attempt_run(
                 },
                 task_id=task_id,
             )
-            option = "deny" if decision == "deny" else "allow"
+            options = params.get("options") or []
+            if not isinstance(options, list):
+                options = []
+            option_id = pick_option_id(options, decision)
             return {
                 "outcome": {
                     "outcome": "selected",
-                    "optionId": option,
+                    "optionId": option_id,
                 }
             }
 
