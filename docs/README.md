@@ -2,7 +2,7 @@
 
 Open this file first. Other files do not explain the reading order.
 
-Ravand Agents is still design-only. There is no CLI to run. Read to learn what we will build, then stop. Do not start Slice 0 until the product README, this map, the roadmap, and the HLD agree with what you want.
+v0 CLI exists (`ravand which` / `run` / `login` / `status`). The map is still the reading order. Do not start v1 until [ROADMAP.md](ROADMAP.md) leftover v0 and [SUCCESS.md](SUCCESS.md) four checks are done.
 
 ## Where to start
 
@@ -10,7 +10,7 @@ Ravand Agents is still design-only. There is no CLI to run. Read to learn what w
 |-------------|------------|------|
 | Learn the product | [../README.md](../README.md) | This map, then the design path below |
 | Walk the design in order | This file | Step 1 of the design path |
-| Know v0 vs later | [ROADMAP.md](ROADMAP.md) | [HLD.md](HLD.md) |
+| Know v0 leftover vs v1–v4 | [ROADMAP.md](ROADMAP.md) | [HLD.md](HLD.md) |
 | Know what to ship first | [SUCCESS.md](SUCCESS.md) | [ROADMAP.md](ROADMAP.md) |
 | Implement a slice | [../AGENTS.md](../AGENTS.md) | The slice table in this file |
 | Build this repo with Grok/Kimi/Cursor | [SECURITY.md](SECURITY.md) | [BOOTSTRAP.md](BOOTSTRAP.md) |
@@ -22,7 +22,7 @@ Do this sequence. Each file names the previous file and the next file at the top
 
 1. [Product README](../README.md). What Ravand Agents is, what it is not, the v0 commands.
 2. [How Ravand can succeed](SUCCESS.md). Wedge, freeze the map, what we ship first.
-3. [Roadmap](ROADMAP.md). v0 on one machine, then v1 humans, v2 queue, v3 control plane.
+3. [Roadmap](ROADMAP.md). v0 leftover, freeze TUI, then v1 local modular, v2 queue, v3 control plane, v4 partners.
 4. [HLD](HLD.md). Services, run path, trust, deployment.
 5. [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md). Architecture we study. Our kernel. The few differences.
 6. [Modular runtime](MODULAR.md). Accounts, loops, workflows, sandbox, cloud access, evals.
