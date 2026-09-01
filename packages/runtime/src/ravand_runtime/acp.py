@@ -14,6 +14,51 @@ class AcpError(Exception):
     pass
 
 
+class AuthRequired(Exception):
+    """Agent requires login; no cached credential satisfied the handshake."""
+
+    def __init__(self, agent: str) -> None:
+        super().__init__(f"agent {agent!r} requires authentication")
+        self.agent = agent
+        self.exit_code = 2
+
+
+def is_auth_error(exc: AcpError) -> bool:
+    """True when a JSON-RPC error is the ACP auth-required signal."""
+    text = str(exc).lower()
+    return "-32000" in text or "authentication required" in text
+
+
+def ensure_authenticated(
+    client: AcpClient,
+    init_result: dict[str, Any],
+    *,
+    agent: str,
+) -> None:
+    """ACP handshake step 3: authenticate when the agent advertises authMethods.
+
+    Tries the advertised ``cached_token`` method (existing session) first,
+    then any other advertised method id. Only method ids are sent; token
+    material is never read, sent, or logged. Raises AuthRequired when no
+    advertised method succeeds.
+    """
+    methods = init_result.get("authMethods") or []
+    ids: list[str] = []
+    for method in methods:
+        if isinstance(method, dict) and method.get("id"):
+            ids.append(str(method["id"]))
+    if not ids:
+        return
+    candidates = ["cached_token", *[mid for mid in ids if mid != "cached_token"]]
+    for method_id in candidates:
+        try:
+            client.request_with_handlers("authenticate", {"methodId": method_id})
+            return
+        except AcpError:
+            continue
+    raise AuthRequired(agent)
+
+
 class AcpClient:
     def __init__(self, proc: subprocess.Popen[bytes]) -> None:
         self._proc = proc

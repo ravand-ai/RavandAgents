@@ -14,7 +14,15 @@ from ravand_audit import AuditLog
 from ravand_permissions import decide_repo_only
 from ravand_policy import ResolvedPolicy, ravand_home, resolve
 from ravand_profile import ensure_profile_home
-from ravand_runtime.acp import spawn
+from ravand_registry import login_hint
+from ravand_runtime.acp import (
+    AcpClient,
+    AcpError,
+    AuthRequired,
+    ensure_authenticated,
+    is_auth_error,
+    spawn,
+)
 from ravand_sessions import SessionRecord, SessionStore
 
 EventSink = Callable[[dict[str, Any]], None]
@@ -54,7 +62,43 @@ def audit_agent_denied(detail: str, *, cwd: Path | None = None) -> None:
     )
 
 
+def _connect(policy: ResolvedPolicy, *, cwd: Path) -> AcpClient:
+    """Spawn, initialize, and authenticate. Fails closed on auth."""
+    client = spawn(policy.command, cwd=cwd, home=policy.home)
+    try:
+        init = client.request_with_handlers("initialize", {"protocolVersion": 1})
+        ensure_authenticated(client, init, agent=policy.agent)
+    except Exception:
+        client.close()
+        raise
+    return client
+
+
+def _auth_missing(
+    policy: ResolvedPolicy,
+    *,
+    task_id: str,
+    log: AuditLog,
+) -> int:
+    """Audit auth.missing, print the vendor login hint, exit 2."""
+    hint = login_hint(policy.agent)
+    print(
+        f"agent {policy.agent!r} requires login. "
+        f"Run: ravand login {policy.profile} / {hint}",
+        file=sys.stderr,
+    )
+    log.emit(
+        "auth.missing",
+        task_id=task_id,
+        profile=policy.profile,
+        agent=policy.agent,
+        detail=f"ravand login {policy.profile} / {hint}",
+    )
+    return 2
+
+
 def _attempt_run(
+    client: AcpClient,
     policy: ResolvedPolicy,
     prompt: str,
     *,
@@ -65,18 +109,20 @@ def _attempt_run(
     log: AuditLog,
     record: SessionRecord,
 ) -> tuple[int, str, str | None, bool]:
-    client = None
     session_acp_id: str | None = None
     status = "error"
     exit_code = 5
     overflow = False
     try:
-        client = spawn(policy.command, cwd=cwd, home=policy.home)
-        client.request_with_handlers("initialize", {"protocolVersion": 1})
-        session = client.request_with_handlers(
-            "session/new",
-            {"cwd": str(cwd), "mcpServers": []},
-        )
+        try:
+            session = client.request_with_handlers(
+                "session/new",
+                {"cwd": str(cwd), "mcpServers": []},
+            )
+        except AcpError as exc:
+            if is_auth_error(exc):
+                raise AuthRequired(policy.agent) from exc
+            raise
         session_acp_id = session.get("sessionId")
 
         def on_update(msg: dict[str, Any]) -> None:
@@ -131,12 +177,14 @@ def _attempt_run(
             pass
         status = "ok"
         exit_code = 0
+    except AuthRequired:
+        status = "auth"
+        exit_code = _auth_missing(policy, task_id=task_id, log=log)
     except Exception as exc:
         overflow = _overflow_triggered(exc)
         print(str(exc), file=sys.stderr)
     finally:
-        if client is not None:
-            client.close()
+        client.close()
         store.finish(
             record.id,
             status=status,
@@ -174,6 +222,21 @@ def run_prompt(
         agent=policy.agent,
         cwd=str(cwd),
     )
+    try:
+        client = _connect(policy, cwd=cwd)
+    except AuthRequired:
+        return _auth_missing(policy, task_id=task_id, log=log)
+    except Exception as exc:
+        print(str(exc), file=sys.stderr)
+        log.emit(
+            "run.ended",
+            task_id=task_id,
+            profile=policy.profile,
+            agent=policy.agent,
+            detail="error",
+        )
+        _emit(sink, {"type": "run.ended", "status": "error"}, task_id=task_id)
+        return 5
     record = store.start(
         task_id=task_id,
         cwd=str(cwd),
@@ -191,6 +254,7 @@ def run_prompt(
     _emit(sink, {"type": "run.started"}, task_id=task_id)
 
     exit_code, _, _, triggered = _attempt_run(
+        client,
         policy,
         prompt,
         cwd=cwd,
@@ -221,6 +285,21 @@ def run_prompt(
         agent=overflow_policy.agent,
         cwd=str(cwd),
     )
+    try:
+        overflow_client = _connect(overflow_policy, cwd=cwd)
+    except AuthRequired:
+        return _auth_missing(overflow_policy, task_id=task_id, log=log)
+    except Exception as exc:
+        print(str(exc), file=sys.stderr)
+        log.emit(
+            "run.ended",
+            task_id=task_id,
+            profile=overflow_policy.profile,
+            agent=overflow_policy.agent,
+            detail="error",
+        )
+        _emit(sink, {"type": "run.ended", "status": "error"}, task_id=task_id)
+        return 5
     overflow_record = store.start(
         task_id=task_id,
         cwd=str(cwd),
@@ -238,6 +317,7 @@ def run_prompt(
     )
     _emit(sink, {"type": "run.started"}, task_id=task_id)
     overflow_exit, _, _, _ = _attempt_run(
+        overflow_client,
         overflow_policy,
         prompt,
         cwd=cwd,

@@ -1,9 +1,27 @@
-"""Minimal ACP agent for tests. NDJSON JSON-RPC over stdio."""
+"""Minimal ACP agent for tests. NDJSON JSON-RPC over stdio.
+
+FAKE_ACP_AUTH=required: advertise authMethods, fail authenticate (-32000).
+FAKE_ACP_AUTH=cached: advertise authMethods, accept authenticate.
+FAKE_ACP_STATE=<path>: mark the file if a session is spawned after a
+failed authenticate handshake (must never happen).
+"""
 
 from __future__ import annotations
 
 import json
+import os
 import sys
+
+AUTH_MODE = os.environ.get("FAKE_ACP_AUTH", "")
+STATE_PATH = os.environ.get("FAKE_ACP_STATE", "")
+
+auth_failed = False
+
+
+def _mark_spawn() -> None:
+    if STATE_PATH:
+        with open(STATE_PATH, "a", encoding="utf-8") as handle:
+            handle.write("spawned-after-auth-failure\n")
 
 
 def _read() -> dict | None:
@@ -19,6 +37,7 @@ def _write(msg: dict) -> None:
 
 
 def main() -> None:
+    global auth_failed
     next_req = 1000
     while True:
         msg = _read()
@@ -28,19 +47,34 @@ def main() -> None:
         mid = msg.get("id")
         params = msg.get("params") or {}
         if method == "initialize":
-            _write(
-                {
-                    "jsonrpc": "2.0",
-                    "id": mid,
-                    "result": {
-                        "protocolVersion": 1,
-                        "agentCapabilities": {"loadSession": False},
-                    },
-                }
-            )
+            result: dict = {
+                "protocolVersion": 1,
+                "agentCapabilities": {"loadSession": False},
+            }
+            if AUTH_MODE in {"required", "cached"}:
+                result["authMethods"] = [
+                    {"id": "cached_token", "name": "Cached token"}
+                ]
+            _write({"jsonrpc": "2.0", "id": mid, "result": result})
+        elif method == "authenticate":
+            if AUTH_MODE == "required":
+                auth_failed = True
+                _write(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": mid,
+                        "error": {"code": -32000, "message": "Authentication required"},
+                    }
+                )
+            else:
+                _write({"jsonrpc": "2.0", "id": mid, "result": {}})
         elif method == "session/new":
+            if auth_failed:
+                _mark_spawn()
             _write({"jsonrpc": "2.0", "id": mid, "result": {"sessionId": "sess-test"}})
         elif method == "session/prompt":
+            if auth_failed:
+                _mark_spawn()
             prompt = json.dumps(params)
             if "passwd" in prompt:
                 req_id = next_req
