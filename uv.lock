@@ -8,6 +8,7 @@ members = [
     "ravand-audit",
     "ravand-cli",
     "ravand-hooks",
+    "ravand-memory",
     "ravand-permissions",
     "ravand-policy",
     "ravand-profile",
@@ -146,6 +147,7 @@ dev = [
     { name = "pytest" },
     { name = "ravand-audit" },
     { name = "ravand-hooks" },
+    { name = "ravand-memory" },
     { name = "ravand-sessions" },
 ]
 
@@ -157,6 +159,7 @@ dev = [
     { name = "pytest", specifier = ">=8" },
     { name = "ravand-audit", editable = "packages/audit" },
     { name = "ravand-hooks", editable = "packages/hooks" },
+    { name = "ravand-memory", editable = "packages/memory" },
     { name = "ravand-sessions", editable = "packages/sessions" },
 ]
 
@@ -190,6 +193,11 @@ requires-dist = [
 name = "ravand-hooks"
 version = "0.0.0"
 source = { editable = "packages/hooks" }
+
+[[package]]
+name = "ravand-memory"
+version = "0.0.0"
+source = { editable = "packages/memory" }
 
 [[package]]
 name = "ravand-permissions"
