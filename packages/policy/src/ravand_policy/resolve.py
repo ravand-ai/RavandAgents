@@ -18,6 +18,7 @@ def ravand_home() -> Path:
 
 
 _SANDBOX_VALUES = frozenset({"none", "repo-only", "container"})
+_LOOP_VALUES = frozenset({"acp", "native"})
 _WRITE_SHELL_PERMISSIONS = frozenset({"repo-only", "ask", "plan"})
 
 
@@ -39,6 +40,7 @@ class ResolvedPolicy:
     agent: str = ""
     account: str = ""
     account_kind: str = ""
+    loop: str = "acp"
 
 
 def _load_toml(path: Path) -> dict:
@@ -234,6 +236,27 @@ def _enforce_sandbox(
         )
 
 
+def _parse_loop(harness: dict) -> str:
+    raw = harness.get("loop", "acp")
+    if not isinstance(raw, str):
+        raise PolicyDenied("harness loop must be a string")
+    loop = raw.strip()
+    if loop not in _LOOP_VALUES:
+        raise PolicyDenied(f"harness loop {loop!r} is invalid")
+    return loop
+
+
+def _enforce_native_loop(*, loop: str, account: str, account_kind: str) -> None:
+    if loop != "native":
+        return
+    if not account:
+        raise PolicyDenied("loop native requires --account")
+    if account_kind != "api":
+        raise PolicyDenied(
+            f"loop native requires kind api account, got {account_kind!r}"
+        )
+
+
 def _parse_agents_md(harness: dict) -> bool:
     if "agents_md" not in harness:
         return False
@@ -317,6 +340,7 @@ def resolve(
     skills_allow = _parse_skills_allow(harness)
     functions_allow = _parse_functions_allow(harness)
     agents_md = _parse_agents_md(harness)
+    loop = _parse_loop(harness)
 
     account = ""
     account_kind = ""
@@ -328,6 +352,7 @@ def resolve(
             agent=agent,
             classification=classification,
         )
+    _enforce_native_loop(loop=loop, account=account, account_kind=account_kind)
 
     profile_home = home_root / "profiles" / profile
     return ResolvedPolicy(
@@ -347,4 +372,5 @@ def resolve(
         agent=agent,
         account=account,
         account_kind=account_kind,
+        loop=loop,
     )

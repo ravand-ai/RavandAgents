@@ -14,7 +14,7 @@ from ravand_cli.ask import confirm_permission, confirm_plan, should_ask
 from ravand_cli.status import run_status
 from ravand_cli.tui import run_tui
 from ravand_plugins import FailClosed as PluginFailClosed, PluginHost
-from ravand_runtime import audit_agent_denied, run_prompt, serve_acp, steer_prompt
+from ravand_runtime import audit_agent_denied, run_native_prompt, run_prompt, serve_acp, steer_prompt
 from ravand_runtime.plan import plan_mode_active
 
 NOT_IMPLEMENTED = "not implemented"
@@ -84,6 +84,7 @@ def _which(args: argparse.Namespace) -> int:
         "skillsAllow": policy.skills_allow,
         "functionsAllow": policy.functions_allow,
         "agentsMd": policy.agents_md,
+        "loop": policy.loop,
         "auth": "unknown",
     }
     print(json.dumps(payload))
@@ -108,6 +109,16 @@ def _run(args: argparse.Namespace) -> int:
     except UnknownAgent as exc:
         print(str(exc), file=sys.stderr)
         return exc.exit_code
+    if policy.loop == "native":
+        def sink(event: dict) -> None:
+            print(json.dumps(event), flush=True)
+
+        return run_native_prompt(
+            policy,
+            prompt,
+            cwd=Path.cwd(),
+            sink=sink,
+        )
     if policy.account_kind == "api":
         denied = PolicyDenied(
             f"account {policy.account!r} kind api cannot spawn ACP"

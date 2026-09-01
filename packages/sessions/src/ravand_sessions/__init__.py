@@ -32,6 +32,7 @@ class SessionRecord:
     overflow_of: str | None = None
     ended_at: str | None = None
     host: str | None = None
+    account: str | None = None
 
     def to_json(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -54,6 +55,8 @@ class SessionRecord:
             payload["endedAt"] = self.ended_at
         if self.host is not None:
             payload["host"] = self.host
+        if self.account is not None:
+            payload["account"] = self.account
         return payload
 
     @classmethod
@@ -72,6 +75,7 @@ class SessionRecord:
             overflow_of=data.get("overflowOf"),
             ended_at=data.get("endedAt"),
             host=data.get("host"),
+            account=data.get("account"),
         )
 
 
@@ -111,6 +115,7 @@ class SessionStore:
         command: list[str],
         repo: str | None = None,
         overflow_of: str | None = None,
+        account: str | None = None,
     ) -> SessionRecord:
         record = SessionRecord(
             id=str(uuid.uuid4()),
@@ -124,6 +129,7 @@ class SessionStore:
             repo=repo,
             overflow_of=overflow_of,
             host=socket.gethostname(),
+            account=account,
         )
         self.write(record)
         return record
