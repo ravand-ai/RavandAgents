@@ -33,6 +33,8 @@ A local CLI + policy file.
 ravand which                 # resolve agent + profile for cwd
 ravand run "add rate limits" # spawn that ACP agent
 ravand run -a grok "review"  # override
+ravand run -a kimi "..."     # same ACP handshake, isolated profile HOME
+ravand run -a cursor "..."   # same ACP handshake, isolated profile HOME
 ravand login work            # print how to auth CLIs into the work HOME
 ravand status                # workers, queue (v2), login probes
 ```
