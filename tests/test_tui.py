@@ -57,14 +57,14 @@ def test_textual_app_streams_fake_run() -> None:
         async with app.run_test() as pilot:
             await pilot.pause()
             box = app.query_one("#prompt")
-            box.value = "say hi"
-            await box.action_submit()
+            box.load_text("say hi\nsecond line")
+            app.action_submit_prompt()
             await pilot.pause(0.2)
             log = app.query_one("#stream")
             captured["text"] = "".join(str(line) for line in getattr(log, "lines", []))
 
     asyncio.run(_go())
-    assert seen == ["say hi"]
+    assert seen == ["say hi\nsecond line"]
     assert "hello-tui" in captured.get("text", "")
 
 
@@ -86,8 +86,8 @@ def test_textual_app_permission_y_allows() -> None:
         async with app.run_test() as pilot:
             await pilot.pause()
             box = app.query_one("#prompt")
-            box.value = "fetch"
-            await box.action_submit()
+            box.load_text("fetch")
+            app.action_submit_prompt()
             await pilot.pause(0.2)
             await pilot.press("y")
             await pilot.pause(0.2)
