@@ -34,6 +34,7 @@ from ravand_runtime.agents_md import attach_agents_md
 from ravand_runtime.hooks import load_tool_pre_command
 from ravand_runtime.memory import augment_prompt, load_memory_config, open_file_store
 from ravand_runtime.otel import Tracer
+from ravand_runtime.plan import is_write_or_shell, plan_mode_active
 from ravand_sessions import SessionRecord, SessionStore
 
 EventSink = Callable[[dict[str, Any]], None]
@@ -270,6 +271,7 @@ def _attempt_run(
     record: SessionRecord,
     tracer: Tracer,
     ask: AskFn | None = None,
+    ask_plan: AskFn | None = None,
     yes: bool = False,
     cancel: threading.Event | None = None,
     overflow_of: str | None = None,
@@ -279,6 +281,10 @@ def _attempt_run(
     exit_code = 5
     overflow = False
     spanned = False
+    plan_allowed = False
+    plan_ready_emitted = False
+    plan_text_parts: list[str] = []
+    in_plan_mode = plan_mode_active(cwd, policy)
     if cancel is not None:
         _watch_cancel(client, cancel)
         if cancel.is_set():
@@ -301,7 +307,62 @@ def _attempt_run(
             update = params.get("update") if isinstance(params, dict) else None
             if not isinstance(update, dict):
                 return
+            if in_plan_mode and not plan_allowed:
+                kind = str(update.get("sessionUpdate") or "").lower()
+                blocks = _content_blocks(update.get("content"))
+                texts = [str(b["text"]) for b in blocks if b.get("text")]
+                if texts and (
+                    "thought" in kind
+                    or "think" in kind
+                    or "message" in kind
+                    or "text" in kind
+                ):
+                    plan_text_parts.extend(texts)
             _emit_session_update(sink, update, task_id=task_id, tracer=tracer)
+
+        def _deny_permission(
+            params: dict[str, Any],
+            tool: dict[str, Any],
+        ) -> dict[str, Any]:
+            options = params.get("options") or []
+            if not isinstance(options, list):
+                options = []
+            option_id = pick_option_id(options, "deny")
+            return {
+                "outcome": {
+                    "outcome": "selected",
+                    "optionId": option_id,
+                }
+            }
+
+        def _ensure_plan_allowed(tool: dict[str, Any]) -> bool:
+            nonlocal plan_allowed, plan_ready_emitted
+            if not in_plan_mode or plan_allowed or not is_write_or_shell(tool):
+                return plan_allowed
+            summary = " ".join(plan_text_parts).strip() or str(
+                tool.get("title") or tool.get("kind") or "plan"
+            )
+            if not plan_ready_emitted:
+                _emit(
+                    sink,
+                    {"type": "plan.ready", "text": summary},
+                    task_id=task_id,
+                )
+                plan_ready_emitted = True
+            allowed = False
+            if ask_plan is not None:
+                allowed = ask_plan(summary)
+            audit_type = "plan.allow" if allowed else "plan.deny"
+            log.emit(
+                audit_type,
+                task_id=task_id,
+                profile=policy.profile,
+                agent=policy.agent,
+                detail=summary,
+            )
+            if allowed:
+                plan_allowed = True
+            return plan_allowed
 
         def on_permission(msg: dict[str, Any]) -> dict[str, Any]:
             params = msg.get("params") or {}
@@ -335,16 +396,19 @@ def _attempt_run(
                         },
                         task_id=task_id,
                     )
-                    options = params.get("options") or []
-                    if not isinstance(options, list):
-                        options = []
-                    option_id = pick_option_id(options, "deny")
-                    return {
-                        "outcome": {
-                            "outcome": "selected",
-                            "optionId": option_id,
-                        }
-                    }
+                    return _deny_permission(params, tool)
+            if in_plan_mode and is_write_or_shell(tool):
+                if not _ensure_plan_allowed(tool):
+                    _emit(
+                        sink,
+                        {
+                            "type": "permission.ask",
+                            "tool": tool.get("title") or tool.get("kind"),
+                            "text": json.dumps(tool.get("rawInput") or {}),
+                        },
+                        task_id=task_id,
+                    )
+                    return _deny_permission(params, tool)
             decision = decide_repo_only(tool, str(cwd))
             if decision != "deny" and not yes and ask is not None:
                 if not ask(detail):
@@ -487,6 +551,7 @@ def run_prompt(
     cwd: Path,
     sink: EventSink,
     ask: AskFn | None = None,
+    ask_plan: AskFn | None = None,
     yes: bool = False,
     cancel: threading.Event | None = None,
     tracer: Tracer | None = None,
@@ -562,6 +627,7 @@ def run_prompt(
         record=record,
         tracer=tracer,
         ask=ask,
+        ask_plan=ask_plan,
         yes=yes,
         cancel=cancel,
     )
@@ -647,6 +713,7 @@ def run_prompt(
         record=overflow_record,
         tracer=tracer,
         ask=ask,
+        ask_plan=ask_plan,
         yes=yes,
         cancel=cancel,
         overflow_of=record.id,

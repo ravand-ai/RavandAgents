@@ -10,10 +10,11 @@ from pathlib import Path
 from ravand_policy import PolicyDenied, UnknownAgent, resolve
 from ravand_profile import ensure_profile_home
 from ravand_registry import login_hint
-from ravand_cli.ask import confirm_permission, should_ask
+from ravand_cli.ask import confirm_permission, confirm_plan, should_ask
 from ravand_cli.status import run_status
 from ravand_cli.tui import run_tui
 from ravand_runtime import audit_agent_denied, run_prompt
+from ravand_runtime.plan import plan_mode_active
 
 NOT_IMPLEMENTED = "not implemented"
 
@@ -108,12 +109,15 @@ def _run(args: argparse.Namespace) -> int:
     ask = None
     if should_ask(yes=yes, is_tty=sys.stdin.isatty()):
         ask = confirm_permission
+    cwd = Path.cwd()
+    ask_plan = confirm_plan if plan_mode_active(cwd, policy) else None
     return run_prompt(
         policy,
         prompt,
-        cwd=Path.cwd(),
+        cwd=cwd,
         sink=sink,
         ask=ask,
+        ask_plan=ask_plan,
         yes=yes,
     )
 
