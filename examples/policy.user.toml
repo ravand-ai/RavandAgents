@@ -1,0 +1,10 @@
+default_profile = "personal"
+audit_bodies = false
+
+[profiles.work]
+home = "~/.ravand/profiles/work"
+allow = ["claude", "grok", "cursor"]
+
+[profiles.personal]
+home = "~/.ravand/profiles/personal"
+allow = ["kimi", "grok", "opencode", "dsh"]

@@ -1,0 +1,18 @@
+profile = "work"
+default = "grok"
+overflow = "kimi"
+deny = []
+permissions = "repo-only"
+classification = "internal"
+
+[agents.grok]
+command = ["grok", "agent", "stdio"]
+
+[agents.kimi]
+command = ["kimi", "acp"]
+
+[agents.claude]
+command = ["npx", "-y", "@agentclientprotocol/claude-agent-acp"]
+
+[agents.cursor]
+command = ["cursor-agent", "acp"]
