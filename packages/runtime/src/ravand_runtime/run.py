@@ -44,6 +44,58 @@ def _overflow_triggered(exc: Exception) -> bool:
     return any(marker in text for marker in _OVERFLOW_MARKERS)
 
 
+def _content_blocks(content: Any) -> list[dict[str, Any]]:
+    if isinstance(content, dict):
+        return [content]
+    if isinstance(content, list):
+        return [block for block in content if isinstance(block, dict)]
+    return []
+
+
+def _short_label(update: dict[str, Any]) -> str:
+    raw = (
+        update.get("title")
+        or update.get("kind")
+        or update.get("toolCallId")
+        or "tool"
+    )
+    label = " ".join(str(raw).split())
+    if len(label) > 80:
+        label = label[:77] + "..."
+    return label
+
+
+def _emit_session_update(
+    sink: EventSink,
+    update: dict[str, Any],
+    *,
+    task_id: str,
+) -> None:
+    kind = str(update.get("sessionUpdate") or "").lower()
+    blocks = _content_blocks(update.get("content"))
+    texts = [str(b["text"]) for b in blocks if b.get("text")]
+    if "thought" in kind or "think" in kind:
+        for text in texts:
+            _emit(sink, {"type": "thinking.delta", "text": text}, task_id=task_id)
+        return
+    if "tool_call" in kind:
+        label = _short_label(update)
+        status = str(update.get("status") or "")
+        done = "update" in kind or status in {"completed", "failed"}
+        _emit(
+            sink,
+            {
+                "type": "tool.result" if done and status != "in_progress" else "tool.call",
+                "tool": label,
+                "status": status or ("completed" if done else "in_progress"),
+            },
+            task_id=task_id,
+        )
+        return
+    for text in texts:
+        _emit(sink, {"type": "text.delta", "text": text}, task_id=task_id)
+
+
 def _should_overflow(policy: ResolvedPolicy, *, triggered: bool) -> bool:
     overflow = policy.overflow_agent
     if not triggered or not overflow:
@@ -133,20 +185,7 @@ def _attempt_run(
             update = params.get("update") if isinstance(params, dict) else None
             if not isinstance(update, dict):
                 return
-            content = update.get("content")
-            blocks: list[Any]
-            if isinstance(content, dict):
-                blocks = [content]
-            elif isinstance(content, list):
-                blocks = content
-            else:
-                blocks = []
-            for block in blocks:
-                if not isinstance(block, dict):
-                    continue
-                text = block.get("text")
-                if text:
-                    _emit(sink, {"type": "text.delta", "text": text}, task_id=task_id)
+            _emit_session_update(sink, update, task_id=task_id)
 
         def on_permission(msg: dict[str, Any]) -> dict[str, Any]:
             params = msg.get("params") or {}

@@ -121,3 +121,39 @@ def test_textual_app_shows_user_bubble() -> None:
     asyncio.run(_go())
     assert "turn-user" in roles
     assert "turn-agent" in roles
+
+
+def test_textual_app_shows_tool_progress() -> None:
+    from ravand_cli.tui import RavandApp, Turn
+
+    def fake_runner(policy, prompt, *, cwd, sink, ask, yes):
+        sink({"type": "thinking.delta", "text": "planning the reply"})
+        sink({"type": "tool.call", "tool": "Read AGENTS.md", "status": "in_progress"})
+        sink({"type": "tool.result", "tool": "Read AGENTS.md", "status": "completed"})
+        sink({"type": "text.delta", "text": "hello-tui"})
+        sink({"type": "run.ended", "status": "ok"})
+        return 0
+
+    app = RavandApp(cwd=ROOT, runner=fake_runner)
+    blob = ""
+
+    async def _go() -> None:
+        nonlocal blob
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            box = app.query_one("#prompt")
+            box.load_text("progress")
+            app.action_submit_prompt()
+            for _ in range(40):
+                await pilot.pause(0.05)
+                parts = []
+                for child in app.query_one("#transcript").children:
+                    if isinstance(child, Turn):
+                        parts.append(child.body)
+                blob = "\n".join(parts)
+                if "Read AGENTS.md" in blob and "thinking" in blob.lower():
+                    break
+
+    asyncio.run(_go())
+    assert "Read AGENTS.md" in blob
+    assert "thinking" in blob.lower()

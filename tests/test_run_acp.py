@@ -79,6 +79,9 @@ def test_run_streams_jsonl_without_secrets(tmp_path: Path) -> None:
     assert "xai-" not in blob
     assert "Bearer" not in blob
     assert any(e.get("text") == "hello-from-fake" for e in events)
+    assert "thinking.delta" in types
+    assert "tool.call" in types
+    assert any(e.get("tool") == "Read AGENTS.md" for e in events)
 
 
 def test_session_update_list_content_after_permission_does_not_crash(

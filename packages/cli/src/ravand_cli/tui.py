@@ -32,6 +32,10 @@ class Turn(Static):
         self._buf += text
         self.update(self._buf)
 
+    @property
+    def body(self) -> str:
+        return self._buf
+
 
 class RavandApp(App[int]):
     """Chat-style operator screen over run_prompt. Not a coding TUI."""
@@ -133,6 +137,8 @@ class RavandApp(App[int]):
         self._perm_ok = False
         self._asking = False
         self._busy = False
+        self._elapsed = 0
+        self._activity = ""
         self._agent_turn: Turn | None = None
 
     def compose(self) -> ComposeResult:
@@ -148,19 +154,35 @@ class RavandApp(App[int]):
 
     def on_mount(self) -> None:
         self._refresh_header()
+        self.set_interval(1.0, self._tick)
         self.query_one("#transcript", VerticalScroll).mount(
             Turn("sys", "Operator console. Policy and audit stay on. Not a Grok clone.")
         )
         box = self.query_one("#prompt", TextArea)
         box.focus()
 
+    def _tick(self) -> None:
+        if not self._busy or not self.is_attached:
+            return
+        self._elapsed += 1
+        try:
+            self._refresh_header(running=True)
+        except Exception:
+            return
+
     def _refresh_header(self, *, running: bool = False) -> None:
+        if not self.is_attached:
+            return
         line = header_text(self.cwd)
         if running:
-            line = f"running  ·  {line}"
-        self.query_one("#status", Static).update(line)
-        brand = "ravand  ·  running…" if running else "ravand"
-        self.query_one("#brand", Static).update(brand)
+            action = self._activity or "working"
+            line = f"running {self._elapsed}s  ·  {action}  ·  {line}"
+        try:
+            self.query_one("#status", Static).update(line)
+            brand = f"ravand  ·  {self._activity or 'running…'}" if running else "ravand"
+            self.query_one("#brand", Static).update(brand)
+        except Exception:
+            return
 
     def action_submit_prompt(self) -> None:
         box = self.query_one("#prompt", TextArea)
@@ -172,6 +194,8 @@ class RavandApp(App[int]):
             return
         box.load_text("")
         self._busy = True
+        self._elapsed = 0
+        self._activity = "working"
         box.disabled = True
         self._refresh_header(running=True)
         self.query_one("#transcript", VerticalScroll).mount(Turn("user", prompt))
@@ -214,33 +238,46 @@ class RavandApp(App[int]):
         bar.display = True
 
     def _sink(self, event: dict[str, Any]) -> None:
+        self.call_from_thread(self._apply_event, event)
+
+    def _apply_event(self, event: dict[str, Any]) -> None:
         kind = event.get("type")
         if kind == "text.delta":
             text = str(event.get("text") or "")
             if text:
-                self.call_from_thread(self._write_stream, text)
+                self._write_stream(text)
+        elif kind == "thinking.delta":
+            text = str(event.get("text") or "").strip()
+            if text:
+                self._note_activity("thinking")
+                self._write_sys(f"thinking  ·  {text[:120]}")
+        elif kind == "tool.call":
+            tool = str(event.get("tool") or "tool")
+            self._note_activity(tool)
+            self._write_sys(f"▸ {tool}")
+        elif kind == "tool.result":
+            tool = str(event.get("tool") or "tool")
+            status = str(event.get("status") or "done")
+            mark = "✓" if status != "failed" else "✗"
+            self._write_sys(f"{mark} {tool}")
         elif kind == "permission.ask":
             tool = str(event.get("tool") or "tool")
-            self.call_from_thread(self._write_stream, "")
-            self.call_from_thread(
-                lambda: self.query_one("#transcript", VerticalScroll).mount(
-                    Turn("sys", f"permission  ·  {tool}")
-                )
-            )
+            self._note_activity(f"ask {tool}")
+            self._write_sys(f"permission  ·  {tool}")
         elif kind == "run.ended":
             status = str(event.get("status") or "")
-            self.call_from_thread(self._write_stream, "")
-            self.call_from_thread(
-                lambda s=status: self.query_one("#transcript", VerticalScroll).mount(
-                    Turn("sys", f"run {s}")
-                )
-            )
+            self._write_sys(f"run {status}")
 
     def _write_stream(self, text: str) -> None:
-        self.query_one("#stream", Log).write(text)
-        if self._agent_turn is not None and text:
-            self._agent_turn.append(text)
-            self.query_one("#transcript", VerticalScroll).scroll_end(animate=False)
+        if not self.is_attached:
+            return
+        try:
+            self.query_one("#stream", Log).write(text)
+            if self._agent_turn is not None and text:
+                self._agent_turn.append(text)
+                self.query_one("#transcript", VerticalScroll).scroll_end(animate=False)
+        except Exception:
+            return
 
     @work(thread=True)
     def _run_agent(self, prompt: str) -> None:
@@ -265,17 +302,34 @@ class RavandApp(App[int]):
         )
         self.call_from_thread(self._idle)
 
+    def _note_activity(self, label: str) -> None:
+        self._activity = label
+        if self._busy:
+            self._refresh_header(running=True)
+
     def _write_sys(self, text: str) -> None:
-        self.query_one("#transcript", VerticalScroll).mount(Turn("sys", text))
-        self.query_one("#stream", Log).write(text)
+        if not self.is_attached:
+            return
+        try:
+            self.query_one("#transcript", VerticalScroll).mount(Turn("sys", text))
+            self.query_one("#stream", Log).write(text)
+            self.query_one("#transcript", VerticalScroll).scroll_end(animate=False)
+        except Exception:
+            return
 
     def _idle(self) -> None:
         self._busy = False
+        self._activity = ""
         self._agent_turn = None
-        box = self.query_one("#prompt", TextArea)
-        box.disabled = False
-        box.focus()
-        self._refresh_header(running=False)
+        if not self.is_attached:
+            return
+        try:
+            box = self.query_one("#prompt", TextArea)
+            box.disabled = False
+            box.focus()
+            self._refresh_header(running=False)
+        except Exception:
+            return
 
 
 def run_tui(cwd: Path) -> int:
