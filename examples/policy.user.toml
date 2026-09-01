@@ -1,0 +1,14 @@
+# Reading: docs/README.md
+# Previous: examples/harness.toml
+# Next: AGENTS.md, Adopted product rules
+
+default_profile = "personal"
+audit_bodies = false
+
+[profiles.work]
+home = "~/.ravand/profiles/work"
+allow = ["claude", "grok", "cursor"]
+
+[profiles.personal]
+home = "~/.ravand/profiles/personal"
+allow = ["kimi", "grok", "opencode", "dsh"]

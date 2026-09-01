@@ -1,0 +1,26 @@
+[project]
+name = "ravand-agents"
+version = "0.0.0"
+description = "Modular agent control plane"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ravand-cli",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+ravand-cli = { workspace = true }
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
