@@ -3,7 +3,7 @@
 Reading: [Docs map](README.md)
 
 Previous: [Security contract](SECURITY.md)
-Next: GitHub issues, then [AGENTS.md](../AGENTS.md) Slice 0
+Next: leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open. Do not implement issue 51.
 
 We use Grok Build, Kimi, and Cursor to implement Ravand. `ravand run` already works on this repo. Prefer `uv run ravand run -a grok|kimi|cursor --yes` over naked CLIs here ([REVIEW.md](REVIEW.md)). The contracts still bind every run: `harness.toml`, `AGENTS.md`, `docs/SECURITY.md`.
 
