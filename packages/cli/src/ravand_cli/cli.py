@@ -12,6 +12,7 @@ from ravand_profile import ensure_profile_home
 from ravand_registry import login_hint
 from ravand_cli.ask import confirm_permission, should_ask
 from ravand_cli.status import run_status
+from ravand_cli.tui import run_tui
 from ravand_runtime import audit_agent_denied, run_prompt
 
 NOT_IMPLEMENTED = "not implemented"
@@ -35,6 +36,7 @@ def _parser() -> argparse.ArgumentParser:
     login = sub.add_parser("login", help="print vendor login hints")
     login.add_argument("profile", nargs="?", default=None)
     sub.add_parser("status", help="login doctor")
+    sub.add_parser("tui", help="operator screen (TTY)")
     return parser
 
 
@@ -136,6 +138,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run(args)
     if args.command == "status":
         return run_status(Path.cwd())
+    if args.command == "tui":
+        return run_tui(Path.cwd())
     print(NOT_IMPLEMENTED, file=sys.stderr)
     return 2
 
