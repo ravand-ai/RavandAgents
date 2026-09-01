@@ -61,6 +61,7 @@ def _which(args: argparse.Namespace) -> int:
         "profile": policy.profile,
         "agent": policy.agent,
         "account": policy.account,
+        "kind": policy.account_kind,
         "overflow": policy.overflow_agent or "",
         "permissions": policy.permissions,
         "home": policy.home,
@@ -89,6 +90,13 @@ def _run(args: argparse.Namespace) -> int:
     except UnknownAgent as exc:
         print(str(exc), file=sys.stderr)
         return exc.exit_code
+    if policy.account_kind == "api":
+        denied = PolicyDenied(
+            f"account {policy.account!r} kind api cannot spawn ACP"
+        )
+        audit_agent_denied(str(denied), cwd=Path.cwd())
+        print(str(denied), file=sys.stderr)
+        return denied.exit_code
 
     def sink(event: dict) -> None:
         print(json.dumps(event), flush=True)

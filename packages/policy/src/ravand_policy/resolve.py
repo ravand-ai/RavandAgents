@@ -30,6 +30,7 @@ class ResolvedPolicy:
     mcp: list[dict] = field(default_factory=list)
     agent: str = ""
     account: str = ""
+    account_kind: str = ""
 
 
 def _load_toml(path: Path) -> dict:
@@ -44,13 +45,29 @@ def _user_config(home: Path) -> dict:
     return _load_toml(path)
 
 
+def _secret_present(secret_ref: str, *, home: Path) -> None:
+    if not secret_ref.startswith("vault:"):
+        raise PolicyDenied("secret_ref must use vault:")
+    rel = secret_ref.removeprefix("vault:")
+    if not rel or rel.startswith("/") or ".." in Path(rel).parts:
+        raise PolicyDenied("secret_ref path is invalid")
+    root = (home / "secrets").resolve()
+    path = (home / "secrets" / rel).resolve()
+    try:
+        path.relative_to(root)
+    except ValueError as exc:
+        raise PolicyDenied("secret_ref path escaped") from exc
+    if not path.is_file() or path.stat().st_size == 0:
+        raise PolicyDenied("secret_ref is missing")
+
+
 def _resolve_account(
     account_id: str,
     *,
     user: dict,
     harness: dict,
     agent: str,
-) -> str:
+) -> tuple[str, str]:
     accounts_cfg = user.get("accounts") or {}
     if not isinstance(accounts_cfg, dict):
         raise PolicyDenied("user accounts table is invalid")
@@ -61,16 +78,19 @@ def _resolve_account(
 
     kind = str(record.get("kind", ""))
     if kind == "api":
-        raise PolicyDenied(f"account {account_id!r} kind api is not supported")
-    if kind != "cli":
+        secret_ref = str(record.get("secret_ref") or "").strip()
+        if not secret_ref:
+            raise PolicyDenied(f"account {account_id!r} secret_ref is missing")
+        _secret_present(secret_ref, home=ravand_home())
+    elif kind == "cli":
+        account_agent = str(record.get("agent", ""))
+        if account_agent != agent:
+            raise PolicyDenied(
+                f"account {account_id!r} agent {account_agent!r} "
+                f"does not match {agent!r}"
+            )
+    else:
         raise PolicyDenied(f"account {account_id!r} has invalid kind")
-
-    account_agent = str(record.get("agent", ""))
-    if account_agent != agent:
-        raise PolicyDenied(
-            f"account {account_id!r} agent {account_agent!r} "
-            f"does not match {agent!r}"
-        )
 
     harness_accounts = harness.get("accounts") or {}
     if isinstance(harness_accounts, dict):
@@ -82,7 +102,7 @@ def _resolve_account(
             if account_id not in allow:
                 raise PolicyDenied(f"account {account_id!r} is not allowed")
 
-    return account_id
+    return account_id, kind
 
 
 def resolve(
@@ -150,8 +170,9 @@ def resolve(
     command = [str(x) for x in spec["command"]]
 
     account = ""
+    account_kind = ""
     if account_override:
-        account = _resolve_account(
+        account, account_kind = _resolve_account(
             account_override,
             user=user,
             harness=harness,
@@ -170,4 +191,5 @@ def resolve(
         command=command,
         agent=agent,
         account=account,
+        account_kind=account_kind,
     )
