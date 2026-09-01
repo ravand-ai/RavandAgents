@@ -3,7 +3,7 @@
 Reading: [docs map](docs/README.md)
 
 Previous: [Governance](docs/GOVERNANCE.md) and the example tomls
-Next: Slice 0 in this file, only after you finish the design path in the docs map
+Next: leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open. Do not implement issue 51.
 
 This file has two parts. Stack, verify, and branches are for the task protocol. "Adopted product rules" is the implement contract. Skip to that heading if you are reading the design.
 
