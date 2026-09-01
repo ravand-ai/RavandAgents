@@ -16,7 +16,7 @@ We over-built `ravand tui` (Textual, chat bubbles, copy, keys, timers). It is op
 **Stop new TUI tickets** until the four SUCCESS checks hold.
 
 1. Dogfood #9 through `ravand run` — **done** ([#9](https://github.com/ravand-ai/RavandAgents/issues/9) / PR [#60](https://github.com/ravand-ai/RavandAgents/pull/60))
-2. The four SUCCESS checks hold on this repo
+2. Leftover: the four SUCCESS checks. They do not hold yet. [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is checks 2 and 3 (two other real repos / second human). Not this repo only.
 
 [Issue #51](https://github.com/ravand-ai/RavandAgents/issues/51) (strip TUI junk) waits. Scripts keep `ravand run --format jsonl`.
 
