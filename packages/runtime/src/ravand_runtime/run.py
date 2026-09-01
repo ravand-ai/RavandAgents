@@ -12,12 +12,14 @@ from typing import Any
 
 from ravand_audit import AuditLog
 from ravand_permissions import decide_repo_only
-from ravand_policy import ResolvedPolicy, ravand_home
+from ravand_policy import ResolvedPolicy, ravand_home, resolve
 from ravand_profile import ensure_profile_home
 from ravand_runtime.acp import spawn
-from ravand_sessions import SessionStore
+from ravand_sessions import SessionRecord, SessionStore
 
 EventSink = Callable[[dict[str, Any]], None]
+
+_OVERFLOW_MARKERS = ("rate_limit", "quota", "crash")
 
 
 def _now_iso() -> str:
@@ -26,6 +28,18 @@ def _now_iso() -> str:
 
 def _emit(sink: EventSink, event: dict[str, Any], *, task_id: str) -> None:
     sink({"ts": _now_iso(), "taskId": task_id, **event})
+
+
+def _overflow_triggered(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return any(marker in text for marker in _OVERFLOW_MARKERS)
+
+
+def _should_overflow(policy: ResolvedPolicy, *, triggered: bool) -> bool:
+    overflow = policy.overflow_agent
+    if not triggered or not overflow:
+        return False
+    return overflow not in policy.deny
 
 
 def audit_agent_denied(detail: str, *, cwd: Path | None = None) -> None:
@@ -40,47 +54,22 @@ def audit_agent_denied(detail: str, *, cwd: Path | None = None) -> None:
     )
 
 
-def run_prompt(
+def _attempt_run(
     policy: ResolvedPolicy,
     prompt: str,
     *,
     cwd: Path,
     sink: EventSink,
-) -> int:
-    cwd = cwd.resolve()
-    task_id = str(uuid.uuid4())
-    root = ravand_home()
-    store = SessionStore(root)
-    log = AuditLog(root)
-
-    ensure_profile_home(policy.home)
-    log.emit(
-        "agent.selected",
-        task_id=task_id,
-        profile=policy.profile,
-        agent=policy.agent,
-        cwd=str(cwd),
-    )
-    record = store.start(
-        task_id=task_id,
-        cwd=str(cwd),
-        profile=policy.profile,
-        agent=policy.agent,
-        command=policy.command,
-    )
-    log.emit(
-        "run.started",
-        task_id=task_id,
-        profile=policy.profile,
-        agent=policy.agent,
-        cwd=str(cwd),
-    )
-    _emit(sink, {"type": "run.started"}, task_id=task_id)
-
+    task_id: str,
+    store: SessionStore,
+    log: AuditLog,
+    record: SessionRecord,
+) -> tuple[int, str, str | None, bool]:
     client = None
     session_acp_id: str | None = None
     status = "error"
     exit_code = 5
+    overflow = False
     try:
         client = spawn(policy.command, cwd=cwd, home=policy.home)
         client.request_with_handlers("initialize", {"protocolVersion": 1})
@@ -143,6 +132,7 @@ def run_prompt(
         status = "ok"
         exit_code = 0
     except Exception as exc:
+        overflow = _overflow_triggered(exc)
         print(str(exc), file=sys.stderr)
     finally:
         if client is not None:
@@ -160,4 +150,101 @@ def run_prompt(
             detail=status,
         )
         _emit(sink, {"type": "run.ended", "status": status}, task_id=task_id)
-    return exit_code
+    return exit_code, status, session_acp_id, overflow
+
+
+def run_prompt(
+    policy: ResolvedPolicy,
+    prompt: str,
+    *,
+    cwd: Path,
+    sink: EventSink,
+) -> int:
+    cwd = cwd.resolve()
+    task_id = str(uuid.uuid4())
+    root = ravand_home()
+    store = SessionStore(root)
+    log = AuditLog(root)
+
+    ensure_profile_home(policy.home)
+    log.emit(
+        "agent.selected",
+        task_id=task_id,
+        profile=policy.profile,
+        agent=policy.agent,
+        cwd=str(cwd),
+    )
+    record = store.start(
+        task_id=task_id,
+        cwd=str(cwd),
+        profile=policy.profile,
+        agent=policy.agent,
+        command=policy.command,
+    )
+    log.emit(
+        "run.started",
+        task_id=task_id,
+        profile=policy.profile,
+        agent=policy.agent,
+        cwd=str(cwd),
+    )
+    _emit(sink, {"type": "run.started"}, task_id=task_id)
+
+    exit_code, _, _, triggered = _attempt_run(
+        policy,
+        prompt,
+        cwd=cwd,
+        sink=sink,
+        task_id=task_id,
+        store=store,
+        log=log,
+        record=record,
+    )
+    if not _should_overflow(policy, triggered=triggered):
+        return exit_code
+
+    overflow_agent = policy.overflow_agent
+    assert overflow_agent is not None
+    log.emit(
+        "agent.overflow",
+        task_id=task_id,
+        profile=policy.profile,
+        agent=policy.agent,
+        detail=overflow_agent,
+    )
+    overflow_policy = resolve(cwd, agent_override=overflow_agent)
+    ensure_profile_home(overflow_policy.home)
+    log.emit(
+        "agent.selected",
+        task_id=task_id,
+        profile=overflow_policy.profile,
+        agent=overflow_policy.agent,
+        cwd=str(cwd),
+    )
+    overflow_record = store.start(
+        task_id=task_id,
+        cwd=str(cwd),
+        profile=overflow_policy.profile,
+        agent=overflow_policy.agent,
+        command=overflow_policy.command,
+        overflow_of=record.id,
+    )
+    log.emit(
+        "run.started",
+        task_id=task_id,
+        profile=overflow_policy.profile,
+        agent=overflow_policy.agent,
+        cwd=str(cwd),
+    )
+    _emit(sink, {"type": "run.started"}, task_id=task_id)
+    overflow_exit, _, _, _ = _attempt_run(
+        overflow_policy,
+        prompt,
+        cwd=cwd,
+        sink=sink,
+        task_id=task_id,
+        store=store,
+        log=log,
+        record=overflow_record,
+    )
+    return overflow_exit
