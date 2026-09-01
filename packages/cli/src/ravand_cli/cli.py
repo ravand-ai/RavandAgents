@@ -11,7 +11,7 @@ from ravand_policy import PolicyDenied, UnknownAgent, resolve
 from ravand_profile import ensure_profile_home
 from ravand_registry import login_hint
 from ravand_cli.status import run_status
-from ravand_runtime import run_prompt
+from ravand_runtime import audit_agent_denied, run_prompt
 
 NOT_IMPLEMENTED = "not implemented"
 
@@ -70,6 +70,7 @@ def _run(args: argparse.Namespace) -> int:
             agent_override=getattr(args, "agent_override", None),
         )
     except PolicyDenied as exc:
+        audit_agent_denied(str(exc), cwd=Path.cwd())
         print(str(exc), file=sys.stderr)
         return exc.exit_code
     except UnknownAgent as exc:

@@ -150,16 +150,20 @@ name = "ravand-runtime"
 version = "0.0.0"
 source = { editable = "packages/runtime" }
 dependencies = [
+    { name = "ravand-audit" },
     { name = "ravand-permissions" },
     { name = "ravand-policy" },
     { name = "ravand-profile" },
+    { name = "ravand-sessions" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "ravand-audit", editable = "packages/audit" },
     { name = "ravand-permissions", editable = "packages/permissions" },
     { name = "ravand-policy", editable = "packages/policy" },
     { name = "ravand-profile", editable = "packages/profile" },
+    { name = "ravand-sessions", editable = "packages/sessions" },
 ]
 
 [[package]]

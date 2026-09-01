@@ -10,18 +10,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FAKE = ROOT / "tests" / "support" / "fake_acp_agent.py"
+FORBIDDEN = ("sk-", "xai-", "Bearer", "cookies")
 
 
-def _harness(repo: Path) -> None:
+def _harness(repo: Path, *, deny: list[str] | None = None) -> None:
     repo.mkdir(parents=True, exist_ok=True)
     fake = json.dumps([sys.executable, str(FAKE)])
+    deny_json = json.dumps(deny or [])
     (repo / "harness.toml").write_text(
         "\n".join(
             [
                 'profile = "work"',
                 'default = "fake"',
                 'overflow = ""',
-                "deny = []",
+                f"deny = {deny_json}",
                 'permissions = "repo-only"',
                 'classification = "internal"',
                 "",
@@ -81,3 +83,65 @@ def test_write_passwd_is_denied(tmp_path: Path) -> None:
     types = [e.get("type") for e in events]
     assert "permission.ask" in types or result.returncode in (0, 3)
     assert "/root/.claude" not in blob
+
+
+def test_run_writes_session_and_audit_without_secrets(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    _harness(repo)
+    prompt = "say hi"
+    result = _run(repo, home, prompt)
+    assert result.returncode == 0, result.stderr
+
+    sessions = list((home / "sessions").glob("*.json"))
+    assert len(sessions) == 1
+    session = json.loads(sessions[0].read_text(encoding="utf-8"))
+    assert session["status"] == "ok"
+    assert session["profile"] == "work"
+    assert session["agent"] == "fake"
+    assert session["taskId"]
+    assert session.get("acpSessionId") == "sess-test"
+
+    audit_path = home / "audit.jsonl"
+    assert audit_path.is_file()
+    audit_events = [
+        json.loads(line)
+        for line in audit_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    audit_types = [event["type"] for event in audit_events]
+    assert "agent.selected" in audit_types
+    assert "run.started" in audit_types
+    assert "run.ended" in audit_types
+
+    blob = (
+        sessions[0].read_text(encoding="utf-8")
+        + audit_path.read_text(encoding="utf-8")
+        + result.stdout
+        + result.stderr
+    )
+    for marker in FORBIDDEN:
+        assert marker not in blob
+    for event in audit_events:
+        assert prompt not in event.get("detail", "")
+
+
+def test_denied_run_writes_agent_denied_without_spawn(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    _harness(repo, deny=["fake"])
+    result = _run(repo, home, "say hi")
+    assert result.returncode == 3, result.stderr
+    assert not list((home / "sessions").glob("*.json"))
+
+    audit_path = home / "audit.jsonl"
+    assert audit_path.is_file()
+    audit_events = [
+        json.loads(line)
+        for line in audit_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert any(event["type"] == "agent.denied" for event in audit_events)
+    blob = audit_path.read_text(encoding="utf-8") + result.stdout + result.stderr
+    for marker in FORBIDDEN:
+        assert marker not in blob
