@@ -10,6 +10,7 @@ from pathlib import Path
 from ravand_policy import PolicyDenied, UnknownAgent, resolve
 from ravand_profile import ensure_profile_home
 from ravand_registry import login_hint
+from ravand_cli.ask import confirm_permission, should_ask
 from ravand_cli.status import run_status
 from ravand_runtime import audit_agent_denied, run_prompt
 
@@ -26,6 +27,11 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("prompt", nargs="?")
     run.add_argument("-a", "--agent", dest="agent_override")
     run.add_argument("--format", choices=["jsonl", "text"], default="jsonl")
+    run.add_argument(
+        "--yes",
+        action="store_true",
+        help="auto-decide permissions (repo-only); never prompt",
+    )
     login = sub.add_parser("login", help="print vendor login hints")
     login.add_argument("profile", nargs="?", default=None)
     sub.add_parser("status", help="login doctor")
@@ -80,7 +86,18 @@ def _run(args: argparse.Namespace) -> int:
     def sink(event: dict) -> None:
         print(json.dumps(event), flush=True)
 
-    return run_prompt(policy, prompt, cwd=Path.cwd(), sink=sink)
+    yes = bool(getattr(args, "yes", False))
+    ask = None
+    if should_ask(yes=yes, is_tty=sys.stdin.isatty()):
+        ask = confirm_permission
+    return run_prompt(
+        policy,
+        prompt,
+        cwd=Path.cwd(),
+        sink=sink,
+        ask=ask,
+        yes=yes,
+    )
 
 
 def _login(args: argparse.Namespace) -> int:

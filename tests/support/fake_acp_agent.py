@@ -145,22 +145,26 @@ def main() -> None:
                         },
                     }
                 )
-                _read()
-                _write(
-                    {
-                        "jsonrpc": "2.0",
-                        "method": "session/update",
-                        "params": {
-                            "sessionId": params.get("sessionId"),
-                            "update": {
-                                "sessionUpdate": "agent_message_chunk",
-                                "content": [
-                                    {"type": "text", "text": "fetched-ok"},
-                                ],
-                            },
-                        },
-                    }
+                reply = _read() or {}
+                option = (
+                    ((reply.get("result") or {}).get("outcome") or {}).get("optionId")
                 )
+                if option != "deny":
+                    _write(
+                        {
+                            "jsonrpc": "2.0",
+                            "method": "session/update",
+                            "params": {
+                                "sessionId": params.get("sessionId"),
+                                "update": {
+                                    "sessionUpdate": "agent_message_chunk",
+                                    "content": [
+                                        {"type": "text", "text": "fetched-ok"},
+                                    ],
+                                },
+                            },
+                        }
+                    )
                 _write(
                     {"jsonrpc": "2.0", "id": mid, "result": {"stopReason": "end_turn"}}
                 )

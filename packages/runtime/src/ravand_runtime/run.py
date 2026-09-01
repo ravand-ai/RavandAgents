@@ -26,6 +26,7 @@ from ravand_runtime.acp import (
 from ravand_sessions import SessionRecord, SessionStore
 
 EventSink = Callable[[dict[str, Any]], None]
+AskFn = Callable[[str], bool]
 
 _OVERFLOW_MARKERS = ("rate_limit", "quota", "crash")
 
@@ -108,6 +109,8 @@ def _attempt_run(
     store: SessionStore,
     log: AuditLog,
     record: SessionRecord,
+    ask: AskFn | None = None,
+    yes: bool = False,
 ) -> tuple[int, str, str | None, bool]:
     session_acp_id: str | None = None
     status = "error"
@@ -154,6 +157,9 @@ def _attempt_run(
                 tool = {}
             decision = decide_repo_only(tool, str(cwd))
             detail = str(tool.get("title") or tool.get("kind") or "tool")
+            if decision != "deny" and not yes and ask is not None:
+                if not ask(detail):
+                    decision = "deny"
             audit_type = "permission.deny" if decision == "deny" else "permission.allow"
             log.emit(
                 audit_type,
@@ -224,6 +230,8 @@ def run_prompt(
     *,
     cwd: Path,
     sink: EventSink,
+    ask: AskFn | None = None,
+    yes: bool = False,
 ) -> int:
     cwd = cwd.resolve()
     task_id = str(uuid.uuid4())
@@ -280,6 +288,8 @@ def run_prompt(
         store=store,
         log=log,
         record=record,
+        ask=ask,
+        yes=yes,
     )
     if not _should_overflow(policy, triggered=triggered):
         return exit_code
@@ -343,5 +353,7 @@ def run_prompt(
         store=store,
         log=log,
         record=overflow_record,
+        ask=ask,
+        yes=yes,
     )
     return overflow_exit
