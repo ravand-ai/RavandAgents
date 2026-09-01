@@ -17,6 +17,10 @@ def ravand_home() -> Path:
     return Path.home() / ".ravand"
 
 
+_SANDBOX_VALUES = frozenset({"none", "repo-only", "container"})
+_WRITE_SHELL_PERMISSIONS = frozenset({"repo-only", "ask", "plan"})
+
+
 @dataclass
 class ResolvedPolicy:
     profile: str
@@ -26,6 +30,7 @@ class ResolvedPolicy:
     deny: list[str]
     permissions: str
     classification: str
+    sandbox: str
     command: list[str]
     mcp: list[dict] = field(default_factory=list)
     skills_allow: list[str] = field(default_factory=list)
@@ -201,6 +206,34 @@ def require_function(policy: ResolvedPolicy, name: str) -> None:
         raise PolicyDenied(f"function {name!r} is not allowed")
 
 
+def _parse_sandbox(harness: dict) -> str:
+    raw = harness.get("sandbox", "repo-only")
+    if not isinstance(raw, str):
+        raise PolicyDenied("harness sandbox must be a string")
+    sandbox = raw.strip()
+    if sandbox not in _SANDBOX_VALUES:
+        raise PolicyDenied(f"harness sandbox {sandbox!r} is invalid")
+    return sandbox
+
+
+def _enforce_sandbox(
+    *,
+    sandbox: str,
+    classification: str,
+    permissions: str,
+) -> None:
+    if sandbox == "container":
+        raise PolicyDenied("sandbox container is not implemented")
+    if (
+        classification == "customer"
+        and sandbox == "none"
+        and permissions in _WRITE_SHELL_PERMISSIONS
+    ):
+        raise PolicyDenied(
+            "customer classification cannot use sandbox none when writes or shell are allowed"
+        )
+
+
 def _parse_agents_md(harness: dict) -> bool:
     if "agents_md" not in harness:
         return False
@@ -233,6 +266,7 @@ def resolve(
             "deny": [],
             "permissions": "repo-only",
             "classification": "internal",
+            "sandbox": "repo-only",
             "agents": {},
         }
 
@@ -241,6 +275,12 @@ def resolve(
     classification = str(harness.get("classification", "internal"))
     deny = [str(x) for x in harness.get("deny", [])]
     permissions = str(harness.get("permissions", "repo-only"))
+    sandbox = _parse_sandbox(harness)
+    _enforce_sandbox(
+        sandbox=sandbox,
+        classification=classification,
+        permissions=permissions,
+    )
     default_agent = str(harness.get("default", ""))
     overflow_raw = str(harness.get("overflow") or "")
     overflow_agent = overflow_raw or None
@@ -298,6 +338,7 @@ def resolve(
         deny=deny,
         permissions=permissions,
         classification=classification,
+        sandbox=sandbox,
         command=command,
         mcp=mcp,
         skills_allow=skills_allow,
