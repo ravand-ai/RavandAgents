@@ -29,6 +29,7 @@ class ResolvedPolicy:
     command: list[str]
     mcp: list[dict] = field(default_factory=list)
     skills_allow: list[str] = field(default_factory=list)
+    functions_allow: list[str] = field(default_factory=list)
     agents_md: bool = False
     agent: str = ""
     account: str = ""
@@ -173,6 +174,33 @@ def require_skill(policy: ResolvedPolicy, name: str) -> None:
         raise PolicyDenied(f"skill {name!r} is not allowed")
 
 
+def _parse_functions_allow(harness: dict) -> list[str]:
+    if "functions" not in harness:
+        return []
+    functions = harness.get("functions")
+    if not isinstance(functions, dict):
+        raise PolicyDenied("harness functions table is invalid")
+    if "allow" not in functions:
+        return []
+    allow = functions.get("allow")
+    if not isinstance(allow, list):
+        raise PolicyDenied("harness functions.allow must be a list")
+    parsed: list[str] = []
+    for item in allow:
+        if not isinstance(item, str) or not item.strip():
+            raise PolicyDenied("harness functions.allow entries must be strings")
+        parsed.append(item)
+    return parsed
+
+
+def require_function(policy: ResolvedPolicy, name: str) -> None:
+    """Fail closed when allow is set and name is missing."""
+    if not policy.functions_allow:
+        return
+    if name not in policy.functions_allow:
+        raise PolicyDenied(f"function {name!r} is not allowed")
+
+
 def _parse_agents_md(harness: dict) -> bool:
     if "agents_md" not in harness:
         return False
@@ -247,6 +275,7 @@ def resolve(
     command = [str(x) for x in spec["command"]]
     mcp = _parse_mcp(harness)
     skills_allow = _parse_skills_allow(harness)
+    functions_allow = _parse_functions_allow(harness)
     agents_md = _parse_agents_md(harness)
 
     account = ""
@@ -272,6 +301,7 @@ def resolve(
         command=command,
         mcp=mcp,
         skills_allow=skills_allow,
+        functions_allow=functions_allow,
         agents_md=agents_md,
         agent=agent,
         account=account,
