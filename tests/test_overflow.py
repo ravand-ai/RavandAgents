@@ -13,17 +13,17 @@ RATE_LIMIT = ROOT / "tests" / "support" / "fake_acp_rate_limit_agent.py"
 OVERFLOW = ROOT / "tests" / "support" / "fake_acp_overflow_agent.py"
 
 
-def _harness(repo: Path) -> None:
+def _harness(repo: Path, *, overflow: str = '"overflow"', deny: str = "[]") -> None:
     repo.mkdir(parents=True, exist_ok=True)
     primary = json.dumps([sys.executable, str(RATE_LIMIT)])
-    overflow = json.dumps([sys.executable, str(OVERFLOW)])
+    overflow_cmd = json.dumps([sys.executable, str(OVERFLOW)])
     (repo / "harness.toml").write_text(
         "\n".join(
             [
                 'profile = "work"',
                 'default = "primary"',
-                'overflow = "overflow"',
-                "deny = []",
+                f"overflow = {overflow}",
+                f"deny = {deny}",
                 'permissions = "repo-only"',
                 'classification = "internal"',
                 "",
@@ -31,7 +31,7 @@ def _harness(repo: Path) -> None:
                 f"command = {primary}",
                 "",
                 "[agents.overflow]",
-                f"command = {overflow}",
+                f"command = {overflow_cmd}",
                 "",
             ]
         ),
@@ -84,3 +84,43 @@ def test_overflow_on_rate_limit_calls_second_agent(tmp_path: Path) -> None:
 
     events = _events(result.stdout)
     assert any(event.get("text") == "hello-from-overflow" for event in events)
+
+
+def _session_files(home: Path) -> list[Path]:
+    sessions_dir = home / "sessions"
+    if not sessions_dir.is_dir():
+        return []
+    return list(sessions_dir.glob("*.json"))
+
+
+def _audit_types(home: Path) -> list[str]:
+    audit = home / "audit.jsonl"
+    if not audit.is_file():
+        return []
+    return [
+        json.loads(line)["type"]
+        for line in audit.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+
+def test_overflow_in_deny_list_does_not_spawn_second_agent(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    _harness(repo, deny='["overflow"]')
+    result = _run(repo, home, "say hi")
+    assert result.returncode == 5, result.stderr
+    assert len(_session_files(home)) == 1
+    assert "agent.overflow" not in _audit_types(home)
+    events = _events(result.stdout)
+    assert not any(event.get("text") == "hello-from-overflow" for event in events)
+
+
+def test_missing_overflow_does_not_spawn_second_agent(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    _harness(repo, overflow='""')
+    result = _run(repo, home, "say hi")
+    assert result.returncode == 5, result.stderr
+    assert len(_session_files(home)) == 1
+    assert "agent.overflow" not in _audit_types(home)
