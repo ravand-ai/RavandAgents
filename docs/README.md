@@ -21,7 +21,7 @@ Do this sequence. Each file names the previous file and the next file at the top
 1. [Product README](../README.md). What Ravand Agents is, what it is not, the v0 commands.
 2. [Roadmap](ROADMAP.md). v0 on one machine, then v1 humans, v2 queue, v3 control plane.
 3. [HLD](HLD.md). Services, run path, trust, deployment.
-4. [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md). What we copy. The few differences. Proposal until accepted into HLD.
+4. [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md). Architecture we study. Our kernel. The few differences. Proposal until accepted into HLD.
 5. [Schema](SCHEMA.md). `harness.toml`, user config, session, audit, queue payloads.
 6. [Governance](GOVERNANCE.md). Fail closed. Not GRC. Not AIOps. Classification rules.
 7. [examples/harness.toml](../examples/harness.toml) and [examples/policy.user.toml](../examples/policy.user.toml). Canonical samples. SCHEMA.md must match them.
@@ -54,7 +54,7 @@ Prompt text for each slice lives in [AGENTS.md](../AGENTS.md). Copy one slice. D
 | [../README.md](../README.md) | What the product is | [ROADMAP.md](ROADMAP.md) |
 | [ROADMAP.md](ROADMAP.md) | What ships in v0, v1, v2, v3 | [HLD.md](HLD.md) |
 | [HLD.md](HLD.md) | Which services exist and how a run flows | [DSH-CORDIS.md](DSH-CORDIS.md) |
-| [DSH-CORDIS.md](DSH-CORDIS.md) | What we copy from dsh/Cordis, and what we do not | [SCHEMA.md](SCHEMA.md) |
+| [DSH-CORDIS.md](DSH-CORDIS.md) | Cordis architecture we study, kernel we write, differences we keep | [SCHEMA.md](SCHEMA.md) |
 | [SCHEMA.md](SCHEMA.md) | Exact files, types, env vars, exit codes | [GOVERNANCE.md](GOVERNANCE.md) |
 | [GOVERNANCE.md](GOVERNANCE.md) | What we refuse to become | examples, then AGENTS.md |
 | [../examples/harness.toml](../examples/harness.toml) | Repo policy sample | [../examples/policy.user.toml](../examples/policy.user.toml) |

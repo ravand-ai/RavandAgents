@@ -48,7 +48,7 @@ docs/
   README.md               # start here: reading order
   ROADMAP.md
   HLD.md
-  DSH-CORDIS.md          # dsh/Cordis comparison (proposal)
+  DSH-CORDIS.md          # Cordis-shaped kernel, not the Cordis package
   SCHEMA.md
   GOVERNANCE.md
 examples/
