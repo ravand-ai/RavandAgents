@@ -1,7 +1,13 @@
 """Policy package."""
 
 from ravand_policy.errors import FailClosed, PolicyDenied, UnknownAgent
-from ravand_policy.resolve import ResolvedPolicy, ravand_home, require_skill, resolve
+from ravand_policy.resolve import (
+    ResolvedPolicy,
+    ravand_home,
+    require_function,
+    require_skill,
+    resolve,
+)
 
 __all__ = [
     "FailClosed",
@@ -9,6 +15,7 @@ __all__ = [
     "UnknownAgent",
     "ResolvedPolicy",
     "ravand_home",
+    "require_function",
     "require_skill",
     "resolve",
 ]

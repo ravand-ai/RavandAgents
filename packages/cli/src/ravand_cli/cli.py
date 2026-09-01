@@ -69,6 +69,7 @@ def _which(args: argparse.Namespace) -> int:
         "command": policy.command,
         "mcp": policy.mcp,
         "skillsAllow": policy.skills_allow,
+        "functionsAllow": policy.functions_allow,
         "agentsMd": policy.agents_md,
         "auth": "unknown",
     }
