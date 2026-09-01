@@ -87,13 +87,19 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
+    { name = "ravand-audit" },
+    { name = "ravand-sessions" },
 ]
 
 [package.metadata]
 requires-dist = [{ name = "ravand-cli", editable = "packages/cli" }]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=8" }]
+dev = [
+    { name = "pytest", specifier = ">=8" },
+    { name = "ravand-audit", editable = "packages/audit" },
+    { name = "ravand-sessions", editable = "packages/sessions" },
+]
 
 [[package]]
 name = "ravand-audit"
