@@ -5,7 +5,7 @@ Reading: [Docs map](README.md)
 Previous: [Security contract](SECURITY.md)
 Next: GitHub issues, then [AGENTS.md](../AGENTS.md) Slice 0
 
-We use Grok Build, Kimi, and Cursor **now** to implement Ravand. Then we use Ravand to run those same CLIs under policy. Until `ravand run` works, the contracts in this repo are the stand-in control plane: `harness.toml`, `AGENTS.md`, `docs/SECURITY.md`.
+We use Grok Build, Kimi, and Cursor to implement Ravand. `ravand run` already works on this repo. Prefer `uv run ravand run -a grok|kimi|cursor --yes` over naked CLIs here ([REVIEW.md](REVIEW.md)). The contracts still bind every run: `harness.toml`, `AGENTS.md`, `docs/SECURITY.md`.
 
 [SUCCESS.md](SUCCESS.md) still wins on ship order. This file is the work plan.
 
@@ -19,14 +19,17 @@ human writes a GitHub issue
     → tester + secret-scan subagents
     → security-gate reviews
     → human merges
-when `ravand run` works (Slice 2):
-    ravand run -a kimi "implement #N"
-    ravand run -a cursor "..."
-    ravand run -a grok "review PR"
-    same policy, same audit. Do not invoke kimi/cursor/grok naked on this repo after that.
 ```
 
-Do not wait for the native loop. The first dogfood is ACP spawn of tools we already have.
+Prefer `uv run ravand run -a grok|kimi|cursor --yes` over naked `kimi` / `cursor-agent` / `grok` on this repo ([REVIEW.md](REVIEW.md)):
+
+```
+uv run ravand run -a kimi --yes "implement #N"
+uv run ravand run -a cursor --yes "..."
+uv run ravand run -a grok --yes "review PR"
+```
+
+Same policy, same audit. Do not wait for the native loop. The first dogfood is ACP spawn of tools we already have.
 
 ## Tools we have
 
@@ -41,7 +44,7 @@ All three can code. Prefer Kimi 2.7 and Cursor Composer for implementation. Pref
 
 Assign **one active builder per issue**. Kimi and Cursor run **at the same time** on disjoint files. Grok reviews their PRs in parallel and may code a third Ready card if the files do not overlap.
 
-**Overflow (process):** if the assigned CLI is rate-limited, logged out, or gone, do not stall the wave. Comment on the issue `overflow: kimi → cursor` (or grok), then the other CLI continues **that same branch** or the next Ready issue. Same `task` / issue number. Do not duplicate the work on a second branch. This is the human version of product `agent.overflow` until `ravand run` exists.
+**Overflow (process):** product overflow (`agent.overflow`) exists. If the assigned CLI is rate-limited, logged out, or gone, do not stall the wave. Comment on the issue `overflow: kimi → cursor` (or grok), then the other CLI continues **that same branch** or the next Ready issue. Same `task` / issue number. Do not duplicate the work on a second branch. Prefer `uv run ravand run` for the overflow CLI. Keep this human overflow comment when `ravand run` itself is broken.
 
 ## Contracts to put on disk first (before Slice 0 code)
 
@@ -60,10 +63,11 @@ Process lock:
 - If you discover extra work, open a new GitHub issue. Do not grow the current branch.
 - CodeQL on push and PR. A CodeQL alert becomes a new issue, not a silent extra commit on the wrong branch.
 - Safe work (SECURITY.md holds, TDD, no extra deps, disjoint files) does not wait for human approval to implement or commit. Human still merges to `main`.
+- Builder never merges. Leftover-v0 merge uses the six-point checklist in [REVIEW.md](REVIEW.md). Do not start v1, Slice 6, or TUI. Issue 56 stays open (checks 2 and 3). Do not implement issue 51.
 
 ## Phases
 
-### Phase A: contracts (no product binary)
+### Phase A: contracts (no product binary) — done
 
 - Root `harness.toml`
 - Security roles and subagent grants
@@ -72,7 +76,7 @@ Process lock:
 
 Exit: an issue exists for every v0 slice. This repo has a policy file.
 
-### Phase B: policy without ACP (Slice 0–1)
+### Phase B: policy without ACP (Slice 0–1) — done
 
 - `ravand` bin (`uv run ravand`)
 - `ravand which` JSON
@@ -81,7 +85,7 @@ Exit: an issue exists for every v0 slice. This repo has a policy file.
 
 Exit: `ravand which` in this repo prints work + grok + kimi overflow.
 
-### Phase C: one real child (Slice 2–3)
+### Phase C: one real child (Slice 2–3) — done
 
 - Spawn `grok agent stdio` with isolated HOME
 - Permission broker repo-only
@@ -91,18 +95,20 @@ Exit: `ravand which` in this repo prints work + grok + kimi overflow.
 
 Exit: `ravand run --format jsonl "print the repo name"` works with Grok logged into the work HOME.
 
-### Phase D: dogfood (Slice 4 + status + other CLIs)
+### Phase D: dogfood (Slice 4 + status + other CLIs) — in progress
 
 - Overflow to Kimi
 - `ravand status`
 - Cursor and Kimi as registered backends
 - Implement the next GitHub issue **through** `ravand run` (kimi or cursor to code; grok to review; overflow CLI if one is limited)
 
+Those bullets shipped. Leftover is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold.
+
 Exit: SUCCESS.md four checks. We stop opening Grok outside Ravand for this repo.
 
 ### Phase E: stop
 
-No bus, no native loop, no plugin registry, no cloud. Open those issues only after Phase D.
+No bus, no native loop, no plugin registry, no cloud. Do not start v1, Slice 6, or TUI. Open those issues only after Phase D.
 
 ## Agent graph (security first)
 
@@ -117,7 +123,7 @@ human (orchestrator, merge)
 
 Rules:
 
-- Builder never merges. Grok-as-reviewer never merges either. Human merges.
+- Builder never merges. Grok-as-reviewer never merges either. Human merges. Leftover-v0 merge uses the six-point checklist in [REVIEW.md](REVIEW.md). Do not start v1, Slice 6, or TUI. Issue 56 stays open (checks 2 and 3). Do not implement issue 51.
 - Prefer Grok as security-gate / reviewer. If Grok is limited, Kimi or Cursor may review a PR they did **not** author.
 - If secret-scan fails, builder output is discarded.
 - Subagent grant ≤ parent grant.
