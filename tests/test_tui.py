@@ -195,6 +195,34 @@ def test_textual_app_coalesces_thinking_words() -> None:
     assert "The user wants" in think_bodies[0]
 
 
+def test_textual_app_copies_last_agent_turn() -> None:
+    from ravand_cli.tui import RavandApp
+
+    def fake_runner(policy, prompt, *, cwd, sink, ask, yes, cancel=None):
+        sink({"type": "text.delta", "text": "copy-me-please"})
+        sink({"type": "run.ended", "status": "ok"})
+        return 0
+
+    app = RavandApp(cwd=ROOT, runner=fake_runner)
+
+    async def _go() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            box = app.query_one("#prompt")
+            box.load_text("say")
+            app.action_submit_prompt()
+            for _ in range(40):
+                await pilot.pause(0.05)
+                log = app.query_one("#stream")
+                text = "".join(str(line) for line in getattr(log, "lines", []))
+                if "copy-me-please" in text:
+                    break
+            app.action_copy_text()
+
+    asyncio.run(_go())
+    assert "copy-me-please" in (app._clipboard or "")
+
+
 def test_first_ctrl_c_cancels_run_second_quits() -> None:
     from ravand_cli.tui import RavandApp, Turn
 
