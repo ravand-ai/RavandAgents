@@ -49,6 +49,7 @@ Prompt text for each slice lives in [AGENTS.md](../AGENTS.md). Copy one slice. D
 | File | Answers | Next |
 |------|---------|------|
 | [docs/README.md](README.md) | Where to start | [../README.md](../README.md) |
+| [../LICENSE](../LICENSE) | BSL 1.1 terms and Additional Use Grant | not on the design path |
 | [../README.md](../README.md) | What the product is | [ROADMAP.md](ROADMAP.md) |
 | [ROADMAP.md](ROADMAP.md) | What ships in v0, v1, v2, v3 | [HLD.md](HLD.md) |
 | [HLD.md](HLD.md) | Which services exist and how a run flows | [SCHEMA.md](SCHEMA.md) |

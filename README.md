@@ -41,6 +41,7 @@ ravand status                # workers, queue (v2), login probes
 ## Repo layout
 
 ```
+LICENSE                   # Business Source License 1.1
 AGENTS.md                 # project rules + implement slices
 README.md                 # product pitch
 docs/
@@ -75,10 +76,13 @@ packages/                 # implement here; empty until generated
 - Sharing one company seat across humans
 - Being a general AI-governance GRC suite or a general AIOps platform
 
-## License intent
+## License
 
-- ACP adapters and schemas: keep open if possible
-- Policy engine, profile isolation, audit evidence: product core
+[LICENSE](LICENSE) is Business Source License 1.1 (SPDX: `BUSL-1.1`).
+
+Production use is free if prior-year revenue is under USD 250,000 and you are not offering a competing product or hosted Ravand. Otherwise you need a commercial license from the Licensor. Each version becomes Apache License 2.0 four years after it is published, or on the Change Date, whichever comes first.
+
+This is not an OSI open-source license today. Contributor perks and yearly commercial renewal are not in this file. They can be added later as a separate commercial contract.
 
 ## Next
 
