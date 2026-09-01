@@ -156,20 +156,22 @@ Reject: pydantic because models look nicer, httpx before we have HTTP, a CLI fra
 
 ## Concurrent waves
 
-Start the next wave when the previous wave's PRs are merged (or the issue is not blocked).
+Waves 1–6 (through dogfood issue 9) are shipped / historical. Leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open (checks 2 and 3). Do not implement issue 51.
 
-| Wave | Parallel issues | Default coder | Grok | Owns (do not touch others) |
-|------|-----------------|---------------|------|----------------------------|
-| 1 | #2 skeleton | Kimi 2.7 or Cursor Composer | review PR | `pyproject.toml`, `uv.lock`, `packages/cli`, package stubs |
-| 1 | #1 security tests | the other coder | review PR | `tests/security/` only |
-| 2 | #3 `ravand which` | Kimi 2.7 | review | `packages/policy`, `packages/profile`, `packages/registry` |
-| 2 | #7 status (tests first) | Cursor Composer | review | `tests/status/` then `packages/cli` status only |
-| 3 | #4 grok ACP | Cursor Composer or Kimi | review; code if they are limited | `packages/runtime`, `packages/permissions` |
-| 3 | #7 finish status | Cursor Composer | review | `packages/cli` status only |
-| 4 | #5 session + audit | Cursor Composer | review | `packages/sessions`, `packages/audit` |
-| 4 | #8 kimi + cursor backends | Kimi 2.7 | review | `packages/registry` agent commands only |
-| 5 | #6 overflow | Kimi 2.7 | review | `packages/runtime` overflow only |
-| 6 | #9 dogfood | via `ravand run -a grok` or overflow CLI | manage the run | one tiny docs file |
+The table is historical file ownership. REVIEW.md still uses it. It is not a current work plan.
+
+| Wave | Status | Parallel issues | Default coder | Grok | Owns (do not touch others) |
+|------|--------|-----------------|---------------|------|----------------------------|
+| 1 | shipped | #2 skeleton | Kimi 2.7 or Cursor Composer | review PR | `pyproject.toml`, `uv.lock`, `packages/cli`, package stubs |
+| 1 | shipped | #1 security tests | the other coder | review PR | `tests/security/` only |
+| 2 | shipped | #3 `ravand which` | Kimi 2.7 | review | `packages/policy`, `packages/profile`, `packages/registry` |
+| 2 | shipped | #7 status (tests first) | Cursor Composer | review | `tests/status/` then `packages/cli` status only |
+| 3 | shipped | #4 grok ACP | Cursor Composer or Kimi | review; code if they are limited | `packages/runtime`, `packages/permissions` |
+| 3 | shipped | #7 finish status | Cursor Composer | review | `packages/cli` status only |
+| 4 | shipped | #5 session + audit | Cursor Composer | review | `packages/sessions`, `packages/audit` |
+| 4 | shipped | #8 kimi + cursor backends | Kimi 2.7 | review | `packages/registry` agent commands only |
+| 5 | shipped | #6 overflow | Kimi 2.7 | review | `packages/runtime` overflow only |
+| 6 | shipped | #9 dogfood | via `ravand run -a grok` or overflow CLI | manage the run | one tiny docs file |
 
 If two waves would edit `packages/cli` or `packages/runtime` at once, wait. Open a new issue for leftover work instead of stretching a wave.
 
