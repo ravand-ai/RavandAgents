@@ -30,6 +30,7 @@ from ravand_runtime.acp import (
     spawn,
 )
 from ravand_memory import FailClosed as MemoryFailClosed, FileStore
+from ravand_runtime.agents_md import attach_agents_md
 from ravand_runtime.hooks import load_tool_pre_command
 from ravand_runtime.memory import augment_prompt, load_memory_config, open_file_store
 from ravand_runtime.otel import Tracer
@@ -504,6 +505,7 @@ def run_prompt(
     except MemoryFailClosed as exc:
         print(str(exc), file=sys.stderr)
         return 3
+    agent_prompt = attach_agents_md(policy, agent_prompt, cwd)
 
     ensure_profile_home(policy.home)
     log.emit(
