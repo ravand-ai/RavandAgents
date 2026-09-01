@@ -3,7 +3,11 @@ name = "ravand-cli"
 version = "0.0.0"
 description = "ravand command-line interface"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "ravand-policy",
+    "ravand-profile",
+    "ravand-registry",
+]
 
 [project.scripts]
 ravand = "ravand_cli.cli:main"
