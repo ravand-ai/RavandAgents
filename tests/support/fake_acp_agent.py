@@ -111,6 +111,59 @@ def main() -> None:
                 _write(
                     {"jsonrpc": "2.0", "id": mid, "result": {"stopReason": "end_turn"}}
                 )
+            elif "fetch" in prompt:
+                req_id = next_req
+                next_req += 1
+                _write(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "method": "session/request_permission",
+                        "params": {
+                            "sessionId": params.get("sessionId"),
+                            "toolCall": {
+                                "toolCallId": "t-fetch",
+                                "title": "Fetch: https://example.com",
+                                "kind": "fetch",
+                                "rawInput": {
+                                    "variant": "WebFetch",
+                                    "url": "https://example.com",
+                                },
+                            },
+                            "options": [
+                                {
+                                    "optionId": "allow",
+                                    "name": "Allow",
+                                    "kind": "allow_once",
+                                },
+                                {
+                                    "optionId": "deny",
+                                    "name": "Deny",
+                                    "kind": "reject_once",
+                                },
+                            ],
+                        },
+                    }
+                )
+                _read()
+                _write(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "session/update",
+                        "params": {
+                            "sessionId": params.get("sessionId"),
+                            "update": {
+                                "sessionUpdate": "agent_message_chunk",
+                                "content": [
+                                    {"type": "text", "text": "fetched-ok"},
+                                ],
+                            },
+                        },
+                    }
+                )
+                _write(
+                    {"jsonrpc": "2.0", "id": mid, "result": {"stopReason": "end_turn"}}
+                )
             else:
                 _write(
                     {

@@ -7,6 +7,8 @@ from typing import Any
 
 def decide_repo_only(tool_call: dict[str, Any], cwd: str) -> str:
     raw = tool_call.get("rawInput") or {}
+    if not isinstance(raw, dict):
+        raw = {}
     path = str(raw.get("path") or raw.get("file") or "")
     if path.startswith("/etc/") or path == "/etc/passwd":
         return "deny"
