@@ -116,7 +116,29 @@ Rules:
 - Subagent grant ≤ parent grant.
 - Prompt for an issue must include: issue URL, SECURITY.md, AGENTS.md slice, "do not implement the next slice."
 - Concurrent builders: only issues in the same wave, and only disjoint file sets.
-- No new PyPI package unless the failing test cannot pass with the stdlib (pytest is the Slice 0 exception).
+- No new PyPI package for convenience. Stdlib first. pytest is the Slice 0 exception. ACP SDK is Slice 2.
+- Performance-only packages need a checked-in benchmark, a reviewer besides the builder, and their own GitHub issue. See below.
+
+## GitHub Project
+
+Track v0 on a GitHub Project so blocked work is visible. Status follows the waves. An issue that cannot start stays **Blocked** with the parent issue linked (GitHub "blocked by").
+
+Do not start a builder on a Blocked card. Grok, Kimi, and Cursor take **Ready** cards in the same wave, disjoint files.
+
+Project: [Ravand v0](https://github.com/orgs/ravand-ai/projects/1). Add every new issue to it. If a slice is blocked by another, set **blocked by** on the GitHub issue (already set for #1–#9). Do not encode the graph only in chat.
+
+## Dependencies (performance)
+
+Default: stdlib. pytest (dev) in Slice 0. Official Python ACP SDK in Slice 2.
+
+You may add a package **for speed** when all of these hold:
+
+1. A failing or slow benchmark lives in `benchmarks/` (or the issue) and names the Ravand path (for example JSONL encode, TOML parse, ACP frame read).
+2. The PR shows before/after numbers on the same machine command.
+3. A reviewer who is not the builder accepts the number and the license/supply-chain cost.
+4. The dependency is the subject of its own GitHub issue (or the current issue said "add X for performance"). CodeQL and secret-scan still run.
+
+Reject: pydantic because models look nicer, httpx before we have HTTP, a CLI framework before `argparse` hurts. Those are convenience, not performance.
 
 ## Concurrent waves
 
@@ -147,7 +169,7 @@ You are the builder for Ravand Agents. Read AGENTS.md, docs/SECURITY.md, docs/BO
 
 Implement only that issue. Branch name: N-short-description from the issue number.
 TDD: write a failing pytest first, run it, then write code. Use Python 3.12+ and uv. Do not add Node or TypeScript.
-Add a dependency only if the failing test cannot pass with the stdlib. Slice 0 may add pytest. ACP SDK only in Slice 2.
+Add a dependency only if the failing test cannot pass with the stdlib, or a benchmark plus a reviewer justify a performance package (own GitHub issue). Slice 0 may add pytest. ACP SDK only in Slice 2.
 Work only the files this issue owns (BOOTSTRAP concurrent waves). Grok, Kimi, and Cursor may run other issues in the same wave on disjoint paths.
 If you find extra work, open a new GitHub issue. Do not grow this branch.
 Do not read ~/.ravand/profiles cookie files. Do not add secrets. Do not start the next slice.

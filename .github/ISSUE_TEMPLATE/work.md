@@ -31,7 +31,8 @@ Subagents: tester, secret-scan.
 
 - Grow this branch with extra work. Open a new issue instead.
 - Secrets, cookie files, vendor HTTP wrap.
-- Add a PyPI dependency unless a failing test cannot pass with the stdlib.
+- Add a PyPI dependency for convenience. Performance deps need a benchmark, a second reviewer, and an issue that names the package.
+- Start work while this issue is **Blocked** on the Ravand v0 GitHub Project.
 - Edit files another open wave already owns (see `docs/BOOTSTRAP.md` concurrent waves).
 
 ## Exit

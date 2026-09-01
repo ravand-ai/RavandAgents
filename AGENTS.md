@@ -101,7 +101,8 @@ v0 is **one process**. Do not stand up a bus or Postgres until v2 flags exist.
 - Do not add the Cordis package as the kernel. Do not fork dsh.
 - Do not add a second plugin runtime. The kernel is the plugin host.
 - Do not read memory across a denied isolation scope.
-- Do not add a dependency unless a failing test cannot pass with the stdlib. Slice 0 may add pytest (dev). The ACP SDK is allowed only in Slice 2. No pydantic, httpx, typer, or extra CLI frameworks unless a later issue names them.
+- Do not add a dependency for convenience. Stdlib first. Slice 0 may add pytest (dev). The ACP SDK is allowed only in Slice 2.
+- A performance dependency is allowed only when: (1) a checked-in benchmark shows a real win on a Ravand path, (2) a reviewer other than the builder accepts the benchmark and the new risk (supply chain, size, license), (3) a GitHub issue named the dependency. Open that issue if it did not exist. Do not sneak the package onto an unrelated branch.
 
 ### Implementation order (do not skip)
 
