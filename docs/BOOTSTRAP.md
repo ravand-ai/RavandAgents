@@ -194,17 +194,17 @@ Do not commit unless the issue says to. Do not push.
 
 ## GitHub issues to open
 
-Issues exist: https://github.com/ravand-ai/RavandAgents/issues  
-Run them by **wave**, not as a single file. Each body must list parent issue, assigned CLI, and tests.
+Issues 1–9 are already opened and shipped: https://github.com/ravand-ai/RavandAgents/issues  
+The list is historical. Leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open (checks 2 and 3). Do not implement issue 51.
 
-1. Security contract in CI mindset (this file + SECURITY.md already). Remaining: test fixtures for deny.
-2. Slice 0 skeleton
-3. Slice 1 policy + which
-4. Slice 2 grok ACP + JSONL + permissions
-5. Slice 3 session + audit
-6. Slice 4 overflow kimi
-7. `ravand status`
-8. Cursor + Kimi backends wired in registry
-9. Dogfood: implement a tiny docs nit **using** `ravand run`
+1. shipped — Security contract in CI mindset (this file + SECURITY.md already). Remaining: test fixtures for deny.
+2. shipped — Slice 0 skeleton
+3. shipped — Slice 1 policy + which
+4. shipped — Slice 2 grok ACP + JSONL + permissions
+5. shipped — Slice 3 session + audit
+6. shipped — Slice 4 overflow kimi
+7. shipped — `ravand status`
+8. shipped — Cursor + Kimi backends wired in registry
+9. shipped — Dogfood: implement a tiny docs nit **using** `ravand run`
 
 Do not open workflow, Kafka, or native-loop issues in this batch.
