@@ -49,6 +49,7 @@ docs/
   HLD.md
   DSH-CORDIS.md          # Cordis-shaped kernel, not the Cordis package
   MODULAR.md             # accounts, loops, workflows, sandbox, cloud
+  COMPARE-PEERS.md       # gaps vs OpenClaw, Hermes, Grok Build
   SCHEMA.md
   GOVERNANCE.md
 examples/
