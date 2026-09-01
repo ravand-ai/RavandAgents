@@ -209,6 +209,8 @@ def main() -> None:
                 reply_text = "hello-from-fake"
                 if MEMORY_MARKER and MEMORY_MARKER in prompt:
                     reply_text = "memory-read-ok"
+                if "MARKER-AGENTS-MD-ATTACH" in prompt:
+                    reply_text = "agents-md-ok"
                 _write(
                     {
                         "jsonrpc": "2.0",

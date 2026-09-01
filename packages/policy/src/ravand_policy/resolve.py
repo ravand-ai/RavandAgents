@@ -29,6 +29,7 @@ class ResolvedPolicy:
     command: list[str]
     mcp: list[dict] = field(default_factory=list)
     skills_allow: list[str] = field(default_factory=list)
+    agents_md: bool = False
     agent: str = ""
     account: str = ""
     account_kind: str = ""
@@ -172,6 +173,15 @@ def require_skill(policy: ResolvedPolicy, name: str) -> None:
         raise PolicyDenied(f"skill {name!r} is not allowed")
 
 
+def _parse_agents_md(harness: dict) -> bool:
+    if "agents_md" not in harness:
+        return False
+    value = harness.get("agents_md")
+    if not isinstance(value, bool):
+        raise PolicyDenied("harness agents_md must be a bool")
+    return value
+
+
 def resolve(
     cwd: Path,
     *,
@@ -237,6 +247,7 @@ def resolve(
     command = [str(x) for x in spec["command"]]
     mcp = _parse_mcp(harness)
     skills_allow = _parse_skills_allow(harness)
+    agents_md = _parse_agents_md(harness)
 
     account = ""
     account_kind = ""
@@ -261,6 +272,7 @@ def resolve(
         command=command,
         mcp=mcp,
         skills_allow=skills_allow,
+        agents_md=agents_md,
         agent=agent,
         account=account,
         account_kind=account_kind,
