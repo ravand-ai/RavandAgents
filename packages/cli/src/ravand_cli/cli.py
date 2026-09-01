@@ -68,6 +68,7 @@ def _which(args: argparse.Namespace) -> int:
         "kind": policy.account_kind,
         "overflow": policy.overflow_agent or "",
         "permissions": policy.permissions,
+        "sandbox": policy.sandbox,
         "home": policy.home,
         "command": policy.command,
         "mcp": policy.mcp,
