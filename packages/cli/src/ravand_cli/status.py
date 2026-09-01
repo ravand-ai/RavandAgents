@@ -100,6 +100,40 @@ def _agent_roles(
     return roles
 
 
+def header_text(cwd: Path) -> str:
+    """One-line status for the TUI. Never reads cookie file contents."""
+    cwd = cwd.resolve()
+    harness = _load_harness(cwd)
+    deny_reason = _classification_denied(harness)
+    if deny_reason is not None:
+        return f"denied: {deny_reason}"
+    try:
+        policy = resolve(cwd)
+    except PolicyDenied as exc:
+        return f"denied: {exc}"
+    ensure_profile_home(policy.home)
+    parts = [
+        f"profile {policy.profile}",
+        f"default {policy.default_agent}",
+    ]
+    if policy.overflow_agent:
+        parts.append(f"overflow {policy.overflow_agent}")
+    parts.append(policy.permissions)
+    agents = harness.get("agents") or {}
+    if isinstance(agents, dict):
+        home = Path(policy.home)
+        bits = []
+        for agent_id in sorted(agents):
+            spec = agents[agent_id]
+            if not isinstance(spec, dict):
+                continue
+            command = [str(part) for part in spec.get("command", [])]
+            bits.append(f"{agent_id}={_probe_login(agent_id, command, home)}")
+        if bits:
+            parts.append(" ".join(bits))
+    return "  ".join(parts)
+
+
 def run_status(cwd: Path) -> int:
     cwd = cwd.resolve()
     harness = _load_harness(cwd)

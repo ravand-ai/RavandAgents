@@ -8,6 +8,7 @@ dependencies = [
     "ravand-profile",
     "ravand-registry",
     "ravand-runtime",
+    "textual>=8,<9",
 ]
 
 [project.scripts]
