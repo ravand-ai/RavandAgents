@@ -10,6 +10,7 @@ from pathlib import Path
 from ravand_policy import PolicyDenied, UnknownAgent, resolve
 from ravand_profile import ensure_profile_home
 from ravand_registry import login_hint
+from ravand_runtime import run_prompt
 
 NOT_IMPLEMENTED = "not implemented"
 
@@ -23,6 +24,7 @@ def _parser() -> argparse.ArgumentParser:
     run = sub.add_parser("run", help="spawn the selected ACP agent")
     run.add_argument("prompt", nargs="?")
     run.add_argument("-a", "--agent", dest="agent_override")
+    run.add_argument("--format", choices=["jsonl", "text"], default="jsonl")
     login = sub.add_parser("login", help="print vendor login hints")
     login.add_argument("profile", nargs="?", default=None)
     sub.add_parser("status", help="login doctor")
@@ -54,6 +56,29 @@ def _which(args: argparse.Namespace) -> int:
     }
     print(json.dumps(payload))
     return 0
+
+
+def _run(args: argparse.Namespace) -> int:
+    prompt = args.prompt
+    if not prompt:
+        print("prompt required", file=sys.stderr)
+        return 2
+    try:
+        policy = resolve(
+            Path.cwd(),
+            agent_override=getattr(args, "agent_override", None),
+        )
+    except PolicyDenied as exc:
+        print(str(exc), file=sys.stderr)
+        return exc.exit_code
+    except UnknownAgent as exc:
+        print(str(exc), file=sys.stderr)
+        return exc.exit_code
+
+    def sink(event: dict) -> None:
+        print(json.dumps(event), flush=True)
+
+    return run_prompt(policy, prompt, cwd=Path.cwd(), sink=sink)
 
 
 def _login(args: argparse.Namespace) -> int:
@@ -88,6 +113,8 @@ def main(argv: list[str] | None = None) -> int:
         return _which(args)
     if args.command == "login":
         return _login(args)
+    if args.command == "run":
+        return _run(args)
     print(NOT_IMPLEMENTED, file=sys.stderr)
     return 2
 

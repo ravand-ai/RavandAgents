@@ -21,6 +21,8 @@ ravand-cli = { workspace = true }
 ravand-policy = { workspace = true }
 ravand-profile = { workspace = true }
 ravand-registry = { workspace = true }
+ravand-runtime = { workspace = true }
+ravand-permissions = { workspace = true }
 
 [tool.uv]
 package = false

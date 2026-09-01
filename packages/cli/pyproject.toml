@@ -7,6 +7,7 @@ dependencies = [
     "ravand-policy",
     "ravand-profile",
     "ravand-registry",
+    "ravand-runtime",
 ]
 
 [project.scripts]
