@@ -15,20 +15,20 @@ COOKIE_SENTINEL_BEARER = "Bearer leaked-from-fixture-cookie"
 
 
 def _write_fixture_cookie(home: Path) -> Path:
-    """Create a dummy cookie path. Do not open any file under a real profile HOME."""
-    cookie = home / ".ravand" / "profiles" / "work" / ".grok" / "cookies"
-    cookie.parent.mkdir(parents=True, exist_ok=True)
-    cookie.write_text(
-        "\n".join(
-            [
-                COOKIE_SENTINEL_SK,
-                COOKIE_SENTINEL_XAI,
-                COOKIE_SENTINEL_BEARER,
-            ]
-        ),
-        encoding="utf-8",
+    """Create dummy grok auth files. Do not open any file under a real profile HOME."""
+    grok_dir = home / ".ravand" / "profiles" / "work" / ".grok"
+    grok_dir.mkdir(parents=True, exist_ok=True)
+    payload = "\n".join(
+        [
+            COOKIE_SENTINEL_SK,
+            COOKIE_SENTINEL_XAI,
+            COOKIE_SENTINEL_BEARER,
+        ]
     )
-    return cookie
+    auth = grok_dir / "auth.json"
+    auth.write_text(payload, encoding="utf-8")
+    (grok_dir / "cookies").write_text(payload, encoding="utf-8")
+    return auth
 
 
 def test_status_output_contains_no_secret_markers(isolated_home: Path) -> None:

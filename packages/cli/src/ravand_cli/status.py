@@ -12,8 +12,9 @@ from ravand_policy import PolicyDenied, resolve
 from ravand_profile import ensure_profile_home
 
 # Relative to profile HOME. Stat only; never open for read.
+# Grok CLI login writes auth.json, not cookies.
 _COOKIE_MARKERS: dict[str, tuple[str, ...]] = {
-    "grok": (".grok", "cookies"),
+    "grok": (".grok", "auth.json"),
     "kimi": (".kimi", "credentials"),
 }
 
