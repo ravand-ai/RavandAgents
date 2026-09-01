@@ -61,12 +61,23 @@ def _secret_present(secret_ref: str, *, home: Path) -> None:
         raise PolicyDenied("secret_ref is missing")
 
 
+def _is_personal_account(account_id: str, record: dict) -> bool:
+    if "personal" in account_id:
+        return True
+    if str(record.get("profile", "")) == "personal":
+        return True
+    if str(record.get("seat", "")) == "personal":
+        return True
+    return False
+
+
 def _resolve_account(
     account_id: str,
     *,
     user: dict,
     harness: dict,
     agent: str,
+    classification: str,
 ) -> tuple[str, str]:
     accounts_cfg = user.get("accounts") or {}
     if not isinstance(accounts_cfg, dict):
@@ -75,6 +86,9 @@ def _resolve_account(
     record = accounts_cfg.get(account_id)
     if not isinstance(record, dict):
         raise PolicyDenied(f"unknown account {account_id!r}")
+
+    if classification == "customer" and _is_personal_account(account_id, record):
+        raise PolicyDenied("customer classification cannot use personal account")
 
     kind = str(record.get("kind", ""))
     if kind == "api":
@@ -203,6 +217,7 @@ def resolve(
             user=user,
             harness=harness,
             agent=agent,
+            classification=classification,
         )
 
     profile_home = home_root / "profiles" / profile
