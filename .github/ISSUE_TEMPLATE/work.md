@@ -12,9 +12,11 @@ labels: v0
 
 ## Builder
 
-Grok / Kimi / Cursor (pick one).
+Default coder: Kimi 2.7 or Cursor Composer. Grok: review and management; code if the others are limited or the files are free.
 
 Subagents: tester, secret-scan.
+
+If the assigned CLI is rate-limited or unavailable, comment `overflow: <from> → <to>` and continue. Do not wait.
 
 ## TDD
 

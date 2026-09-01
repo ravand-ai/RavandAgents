@@ -37,8 +37,8 @@ These are roles that work **on Ravand**, using Grok, Kimi, or Cursor. They are n
 | Role | May read | May write | Shell | Secrets | Spawn child |
 |------|----------|-----------|-------|---------|-------------|
 | orchestrator (human) | yes | yes | yes | never commit | yes |
-| builder | repo | repo (not `.env`, not profile HOME) | ask | no | tests only |
-| security-gate | repo | no (except review notes) | no | scan only | no |
+| builder (kimi, cursor, or grok) | repo | repo (not `.env`, not profile HOME) | ask | no | tests only |
+| security-gate (prefer grok) | repo | no (except review notes) | no | scan only | no |
 | tester | repo + fixtures | `packages/**/test*` | limited to test runner | fixtures fake only | no |
 | docs | `docs/`, README, AGENTS, examples | those paths only | no | no | no |
 

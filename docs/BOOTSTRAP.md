@@ -28,14 +28,18 @@ Do not wait for the native loop. The first dogfood is ACP spawn of tools we alre
 
 ## Tools we have
 
-| CLI | Role on this repo | Why |
-|-----|-------------------|-----|
-| Grok Build (`grok`) | default builder, kernel, ACP runtime | default in `harness.toml` |
-| Kimi (`kimi`) | overflow builder, tests, policy tables | overflow agent |
-| Cursor (`cursor-agent`) | CLI UX, `ravand status`, editor-shaped diffs | third backend |
-| Human | orchestrator, merge, security-gate when no second model | never skip |
+| CLI | Default job | Also may |
+|-----|-------------|---------|
+| Kimi 2.7 (`kimi`) | **Coding** (policy, tests, slices) | Review if Grok is down |
+| Cursor Composer (`cursor-agent`) | **Coding** (CLI, runtime, diffs) | Review if Grok is down |
+| Grok Build (`grok`) | **Review, board, issue management**, and coding when needed | Take any Ready coding issue if Kimi or Cursor hit a limit |
+| Human | Merge, orchestrator, security-gate if no reviewer | never skip |
 
-Assign **one issue to one CLI**. Grok, Kimi, and Cursor run **at the same time** when their issues do not share files. Do not run two builders on the same path.
+All three can code. Prefer Kimi 2.7 and Cursor Composer for implementation. Prefer Grok for review, GitHub Project status, blocked-by, and splitting new issues.
+
+Assign **one active builder per issue**. Kimi and Cursor run **at the same time** on disjoint files. Grok reviews their PRs in parallel and may code a third Ready card if the files do not overlap.
+
+**Overflow (process):** if the assigned CLI is rate-limited, logged out, or gone, do not stall the wave. Comment on the issue `overflow: kimi → cursor` (or grok), then the other CLI continues **that same branch** or the next Ready issue. Same `task` / issue number. Do not duplicate the work on a second branch. This is the human version of product `agent.overflow` until `ravand run` exists.
 
 ## Contracts to put on disk first (before Slice 0 code)
 
@@ -89,7 +93,7 @@ Exit: `ravand run --format jsonl "print the repo name"` works with Grok logged i
 - Overflow to Kimi
 - `ravand status`
 - Cursor and Kimi as registered backends
-- Implement the next GitHub issue **through** `ravand run -a grok`
+- Implement the next GitHub issue **through** `ravand run` (kimi or cursor to code; grok to review; overflow CLI if one is limited)
 
 Exit: SUCCESS.md four checks. We stop opening Grok outside Ravand for this repo.
 
@@ -100,22 +104,23 @@ No bus, no native loop, no plugin registry, no cloud. Open those issues only aft
 ## Agent graph (security first)
 
 ```
-human (orchestrator)
-  ├── security-gate     (read-only review, every PR)
-  ├── builder           (exactly one of grok | kimi | cursor)
-  │     ├── secret-scan (read-only subagent, every builder run)
-  │     └── tester      (writes tests only)
-  └── docs              (docs/ only, optional)
+human (orchestrator, merge)
+  ├── grok            review + management (and code if needed)
+  ├── builder         kimi 2.7 and/or cursor composer (coding)
+  │     ├── secret-scan
+  │     └── tester
+  └── overflow        if kimi or cursor is limited, grok or the other coder continues
 ```
 
 Rules:
 
-- Builder never merges.
-- Security-gate never writes product code.
+- Builder never merges. Grok-as-reviewer never merges either. Human merges.
+- Prefer Grok as security-gate / reviewer. If Grok is limited, Kimi or Cursor may review a PR they did **not** author.
 - If secret-scan fails, builder output is discarded.
 - Subagent grant ≤ parent grant.
 - Prompt for an issue must include: issue URL, SECURITY.md, AGENTS.md slice, "do not implement the next slice."
 - Concurrent builders: only issues in the same wave, and only disjoint file sets.
+- If a CLI hits a limit: comment overflow on the issue, another CLI continues. Do not wait.
 - No new PyPI package for convenience. Stdlib first. pytest is the Slice 0 exception. ACP SDK is Slice 2.
 - Performance-only packages need a checked-in benchmark, a reviewer besides the builder, and their own GitHub issue. See below.
 
@@ -144,19 +149,18 @@ Reject: pydantic because models look nicer, httpx before we have HTTP, a CLI fra
 
 Start the next wave when the previous wave's PRs are merged (or the issue is not blocked).
 
-| Wave | Parallel issues | CLI | Owns (do not touch others) |
-|------|-----------------|-----|----------------------------|
-| 1 | #2 skeleton | Grok | `pyproject.toml`, `uv.lock`, `packages/cli`, `packages/*/pyproject.toml` stubs |
-| 1 | #1 security tests | Kimi | `tests/security/` only |
-| 1 | docs already done | Cursor idle, or review #2 | no product files |
-| 2 | #3 `ravand which` | Kimi | `packages/policy`, `packages/profile`, `packages/registry` |
-| 2 | #7 status (tests first) | Cursor | `tests/status/` until #3 lands, then `packages/cli` status command only |
-| 3 | #4 grok ACP | Grok | `packages/runtime`, `packages/permissions` |
-| 3 | #7 finish status | Cursor | `packages/cli` status only |
-| 4 | #5 session + audit | Cursor | `packages/sessions`, `packages/audit` |
-| 4 | #8 kimi + cursor backends | Grok | `packages/registry` agent commands only |
-| 5 | #6 overflow | Kimi | `packages/runtime` overflow only |
-| 6 | #9 dogfood | Grok via `ravand run` | one tiny docs file |
+| Wave | Parallel issues | Default coder | Grok | Owns (do not touch others) |
+|------|-----------------|---------------|------|----------------------------|
+| 1 | #2 skeleton | Kimi 2.7 or Cursor Composer | review PR | `pyproject.toml`, `uv.lock`, `packages/cli`, package stubs |
+| 1 | #1 security tests | the other coder | review PR | `tests/security/` only |
+| 2 | #3 `ravand which` | Kimi 2.7 | review | `packages/policy`, `packages/profile`, `packages/registry` |
+| 2 | #7 status (tests first) | Cursor Composer | review | `tests/status/` then `packages/cli` status only |
+| 3 | #4 grok ACP | Cursor Composer or Kimi | review; code if they are limited | `packages/runtime`, `packages/permissions` |
+| 3 | #7 finish status | Cursor Composer | review | `packages/cli` status only |
+| 4 | #5 session + audit | Cursor Composer | review | `packages/sessions`, `packages/audit` |
+| 4 | #8 kimi + cursor backends | Kimi 2.7 | review | `packages/registry` agent commands only |
+| 5 | #6 overflow | Kimi 2.7 | review | `packages/runtime` overflow only |
+| 6 | #9 dogfood | via `ravand run -a grok` or overflow CLI | manage the run | one tiny docs file |
 
 If two waves would edit `packages/cli` or `packages/runtime` at once, wait. Open a new issue for leftover work instead of stretching a wave.
 
@@ -165,7 +169,7 @@ If two waves would edit `packages/cli` or `packages/runtime` at once, wait. Open
 Paste into Grok, Kimi, or Cursor:
 
 ```
-You are the builder for Ravand Agents. Read AGENTS.md, docs/SECURITY.md, docs/BOOTSTRAP.md, and the GitHub issue.
+You are a Ravand builder (Kimi 2.7 or Cursor Composer for code; Grok for review/management and code if needed). Read AGENTS.md, docs/SECURITY.md, docs/BOOTSTRAP.md, and the GitHub issue.
 
 Implement only that issue. Branch name: N-short-description from the issue number.
 TDD: write a failing pytest first, run it, then write code. Use Python 3.12+ and uv. Do not add Node or TypeScript.
