@@ -73,7 +73,7 @@ To implement with Grok, Kimi, and Cursor, read [SECURITY.md](SECURITY.md) then [
 | [GOVERNANCE.md](GOVERNANCE.md) | What we refuse to become | examples, then AGENTS.md |
 | [../examples/harness.toml](../examples/harness.toml) | Repo policy sample | [../examples/policy.user.toml](../examples/policy.user.toml) |
 | [../examples/policy.user.toml](../examples/policy.user.toml) | User config sample | [../AGENTS.md](../AGENTS.md) |
-| [../AGENTS.md](../AGENTS.md) | Hard constraints and slice order | Slice 0 when you build |
+| [../AGENTS.md](../AGENTS.md) | Hard constraints and slice order | leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open. Do not implement issue 51. |
 
 ## If a file disagrees
 
