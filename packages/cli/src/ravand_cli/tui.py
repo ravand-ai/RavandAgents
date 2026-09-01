@@ -149,6 +149,11 @@ class RavandApp(App[int]):
         self._cancel = threading.Event()
         self._agent_turn: Turn | None = None
         self._think_turn: Turn | None = None
+        self._base_header = ""
+        self._think_buf = ""
+        self._agent_buf = ""
+        self._event_q: list[dict[str, Any]] = []
+        self._lock = threading.Lock()
 
     def compose(self) -> ComposeResult:
         yield Static("ravand", id="brand")
@@ -165,8 +170,9 @@ class RavandApp(App[int]):
         yield Footer()
 
     def on_mount(self) -> None:
-        self._refresh_header()
+        self._refresh_header(reprobe=True)
         self.set_interval(1.0, self._tick)
+        self.set_interval(0.05, self._flush_pending)
         self.query_one("#transcript", VerticalScroll).mount(
             Turn("sys", "Operator console. Policy and audit stay on. Not a Grok clone.")
         )
@@ -182,10 +188,12 @@ class RavandApp(App[int]):
         except Exception:
             return
 
-    def _refresh_header(self, *, running: bool = False) -> None:
+    def _refresh_header(self, *, running: bool = False, reprobe: bool = False) -> None:
         if not self.is_attached:
             return
-        line = header_text(self.cwd)
+        if reprobe or not self._base_header:
+            self._base_header = header_text(self.cwd)
+        line = self._base_header
         if running:
             action = self._activity or "working"
             line = f"running {self._elapsed}s  ·  {action}  ·  {line}"
@@ -271,7 +279,11 @@ class RavandApp(App[int]):
         bar.display = True
 
     def _sink(self, event: dict[str, Any]) -> None:
-        self.call_from_thread(self._apply_event, event)
+        if event.get("type") == "permission.ask":
+            self.call_from_thread(self._apply_event, event)
+            return
+        with self._lock:
+            self._event_q.append(event)
 
     def _apply_event(self, event: dict[str, Any]) -> None:
         kind = event.get("type")
@@ -279,29 +291,47 @@ class RavandApp(App[int]):
             self._think_turn = None
             text = str(event.get("text") or "")
             if text:
-                self._write_stream(text)
+                self._agent_buf += text
         elif kind == "thinking.delta":
             text = str(event.get("text") or "")
             if text:
-                self._note_activity("thinking")
-                self._append_think(text)
+                self._activity = "thinking"
+                self._think_buf += text
         elif kind == "tool.call":
+            self._flush_pending()
             self._think_turn = None
             tool = str(event.get("tool") or "tool")
-            self._note_activity(tool)
+            self._activity = tool
             self._write_sys(f"▸ {tool}")
         elif kind == "tool.result":
+            self._flush_pending()
             tool = str(event.get("tool") or "tool")
             status = str(event.get("status") or "done")
             mark = "✓" if status != "failed" else "✗"
             self._write_sys(f"{mark} {tool}")
         elif kind == "permission.ask":
+            self._flush_pending()
             tool = str(event.get("tool") or "tool")
-            self._note_activity(f"ask {tool}")
+            self._activity = f"ask {tool}"
             self._write_sys(f"permission  ·  {tool}")
         elif kind == "run.ended":
+            self._flush_pending()
             status = str(event.get("status") or "")
             self._write_sys(f"run {status}")
+
+    def _flush_pending(self) -> None:
+        if not self.is_attached:
+            return
+        with self._lock:
+            batch, self._event_q = self._event_q, []
+        for event in batch:
+            self._apply_event(event)
+        think, self._think_buf = self._think_buf, ""
+        agent, self._agent_buf = self._agent_buf, ""
+        if think:
+            self._append_think(think)
+        if agent:
+            self._write_stream(agent)
 
     def _write_stream(self, text: str) -> None:
         if not self.is_attached:
@@ -351,11 +381,6 @@ class RavandApp(App[int]):
         except Exception:
             return
 
-    def _note_activity(self, label: str) -> None:
-        self._activity = label
-        if self._busy:
-            self._refresh_header(running=True)
-
     def _write_sys(self, text: str) -> None:
         if not self.is_attached:
             return
@@ -377,7 +402,8 @@ class RavandApp(App[int]):
             box = self.query_one("#prompt", TextArea)
             box.disabled = False
             box.focus()
-            self._refresh_header(running=False)
+            self._flush_pending()
+            self._refresh_header(running=False, reprobe=True)
         except Exception:
             return
 
