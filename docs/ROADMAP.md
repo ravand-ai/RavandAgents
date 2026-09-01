@@ -2,7 +2,7 @@
 
 Reading: [Docs map](README.md)
 
-Previous: [Product README](../README.md)
+Previous: [How Ravand can succeed](SUCCESS.md)
 Next: [HLD](HLD.md)
 
 ## v0: dogfood (one machine)

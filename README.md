@@ -3,7 +3,7 @@
 Reading: [docs map](docs/README.md)
 
 Previous: [docs map](docs/README.md)
-Next: [Roadmap](docs/ROADMAP.md)
+Next: [How Ravand can succeed](docs/SUCCESS.md), then [Roadmap](docs/ROADMAP.md)
 
 Ravand Agents is a modular control plane for coding agents. A project picks providers, accounts, loops, tools, MCP, sandbox, workflows, and pipelines.
 
@@ -49,6 +49,7 @@ docs/
   HLD.md
   DSH-CORDIS.md          # Cordis-shaped kernel, not the Cordis package
   MODULAR.md             # accounts, loops, workflows, sandbox, cloud
+  SUCCESS.md             # wedge and ship-first
   COMPARE-PEERS.md       # gaps vs OpenClaw, Hermes, Grok Build
   SCHEMA.md
   GOVERNANCE.md

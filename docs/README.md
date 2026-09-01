@@ -19,17 +19,18 @@ Ravand Agents is still design-only. There is no CLI to run. Read to learn what w
 Do this sequence. Each file names the previous file and the next file at the top.
 
 1. [Product README](../README.md). What Ravand Agents is, what it is not, the v0 commands.
-2. [Roadmap](ROADMAP.md). v0 on one machine, then v1 humans, v2 queue, v3 control plane.
-3. [HLD](HLD.md). Services, run path, trust, deployment.
-4. [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md). Architecture we study. Our kernel. The few differences.
-5. [Modular runtime](MODULAR.md). Accounts, loops, workflows, sandbox, cloud access, evals.
-6. [Compared with OpenClaw, Hermes, Grok Build](COMPARE-PEERS.md). Gap list. Does not add services until HLD says so.
-7. [Schema](SCHEMA.md). `harness.toml`, user config, session, audit, queue payloads.
-8. [Governance](GOVERNANCE.md). Fail closed. Not GRC. Not AIOps. Classification rules.
-9. [examples/harness.toml](../examples/harness.toml) and [examples/policy.user.toml](../examples/policy.user.toml). Canonical v0 samples. SCHEMA.md must match them.
-10. [AGENTS.md](../AGENTS.md) from "Adopted product rules" down. How an implementer is allowed to build. Skip the stack/verify header unless you are running the task protocol.
+2. [How Ravand can succeed](SUCCESS.md). Wedge, freeze the map, what we ship first.
+3. [Roadmap](ROADMAP.md). v0 on one machine, then v1 humans, v2 queue, v3 control plane.
+4. [HLD](HLD.md). Services, run path, trust, deployment.
+5. [Compared with DeepSeek Harness and Cordis](DSH-CORDIS.md). Architecture we study. Our kernel. The few differences.
+6. [Modular runtime](MODULAR.md). Accounts, loops, workflows, sandbox, cloud access, evals.
+7. [Compared with OpenClaw, Hermes, Grok Build](COMPARE-PEERS.md). Gap list. Does not add services until HLD says so.
+8. [Schema](SCHEMA.md). `harness.toml`, user config, session, audit, queue payloads.
+9. [Governance](GOVERNANCE.md). Fail closed. Not GRC. Not AIOps. Classification rules.
+10. [examples/harness.toml](../examples/harness.toml) and [examples/policy.user.toml](../examples/policy.user.toml). Canonical v0 samples. SCHEMA.md must match them.
+11. [AGENTS.md](../AGENTS.md) from "Adopted product rules" down. How an implementer is allowed to build. Skip the stack/verify header unless you are running the task protocol.
 
-After step 10 you know the product. The next design work is a new doc only if HLD, MODULAR, or SCHEMA cannot answer the question. Do not invent a service that HLD does not name.
+After step 11 you know the product. The next design work is a new doc only if HLD, MODULAR, or SCHEMA cannot answer the question. Do not invent a service that HLD does not name.
 
 ## Build path (later, one slice)
 
@@ -53,7 +54,8 @@ Prompt text for each slice lives in [AGENTS.md](../AGENTS.md). Copy one slice. D
 |------|---------|------|
 | [docs/README.md](README.md) | Where to start | [../README.md](../README.md) |
 | [../LICENSE](../LICENSE) | BSL 1.1 terms and Additional Use Grant | not on the design path |
-| [../README.md](../README.md) | What the product is | [ROADMAP.md](ROADMAP.md) |
+| [../README.md](../README.md) | What the product is | [SUCCESS.md](SUCCESS.md) |
+| [SUCCESS.md](SUCCESS.md) | Wedge and what we ship first | [ROADMAP.md](ROADMAP.md) |
 | [ROADMAP.md](ROADMAP.md) | What ships in v0, v1, v2, v3 | [HLD.md](HLD.md) |
 | [HLD.md](HLD.md) | Which services exist and how a run flows | [DSH-CORDIS.md](DSH-CORDIS.md) |
 | [DSH-CORDIS.md](DSH-CORDIS.md) | Cordis architecture we study, kernel we write, differences we keep | [MODULAR.md](MODULAR.md) |
