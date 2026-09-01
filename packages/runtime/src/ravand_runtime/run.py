@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import socket
 import sys
 import threading
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager, nullcontext
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -24,12 +27,62 @@ from ravand_runtime.acp import (
     is_auth_error,
     spawn,
 )
+from ravand_runtime.otel import Tracer
 from ravand_sessions import SessionRecord, SessionStore
 
 EventSink = Callable[[dict[str, Any]], None]
 AskFn = Callable[[str], bool]
 
 _OVERFLOW_MARKERS = ("rate_limit", "quota", "crash")
+
+
+def _policy_hash(policy: ResolvedPolicy) -> str:
+    payload = json.dumps(
+        {
+            "agent": policy.agent,
+            "classification": policy.classification,
+            "deny": policy.deny,
+            "overflow": policy.overflow_agent or "",
+            "permissions": policy.permissions,
+            "profile": policy.profile,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _otel_result(status: str, *, overflow: bool) -> str:
+    if overflow:
+        return "rate_limit"
+    if status == "ok":
+        return "ok"
+    if status == "auth":
+        return "auth_missing"
+    if status == "cancelled":
+        return "ok"
+    return "crash"
+
+
+@contextmanager
+def _invoke_agent(
+    tracer: Tracer,
+    policy: ResolvedPolicy,
+    *,
+    task_id: str,
+    conversation_id: str,
+    overflow_of: str | None = None,
+) -> Iterator[None]:
+    with tracer.invoke_agent(
+        agent=policy.agent,
+        task_id=task_id,
+        profile=policy.profile,
+        conversation_id=conversation_id,
+        policy_hash=_policy_hash(policy),
+        host=socket.gethostname(),
+        overflow_of=overflow_of,
+    ):
+        yield
 
 
 def _now_iso() -> str:
@@ -71,6 +124,7 @@ def _emit_session_update(
     update: dict[str, Any],
     *,
     task_id: str,
+    tracer: Tracer | None = None,
 ) -> None:
     kind = str(update.get("sessionUpdate") or "").lower()
     blocks = _content_blocks(update.get("content"))
@@ -83,15 +137,24 @@ def _emit_session_update(
         label = _short_label(update)
         status = str(update.get("status") or "")
         done = "update" in kind or status in {"completed", "failed"}
-        _emit(
-            sink,
-            {
-                "type": "tool.result" if done and status != "in_progress" else "tool.call",
-                "tool": label,
-                "status": status or ("completed" if done else "in_progress"),
-            },
-            task_id=task_id,
+        event_type = (
+            "tool.result" if done and status != "in_progress" else "tool.call"
         )
+        span = (
+            tracer.execute_tool(name=label)
+            if tracer is not None and event_type == "tool.call"
+            else nullcontext()
+        )
+        with span:
+            _emit(
+                sink,
+                {
+                    "type": event_type,
+                    "tool": label,
+                    "status": status or ("completed" if done else "in_progress"),
+                },
+                task_id=task_id,
+            )
         return
     for text in texts:
         _emit(sink, {"type": "text.delta", "text": text}, task_id=task_id)
@@ -199,14 +262,17 @@ def _attempt_run(
     store: SessionStore,
     log: AuditLog,
     record: SessionRecord,
+    tracer: Tracer,
     ask: AskFn | None = None,
     yes: bool = False,
     cancel: threading.Event | None = None,
+    overflow_of: str | None = None,
 ) -> tuple[int, str, str | None, bool]:
     session_acp_id: str | None = None
     status = "error"
     exit_code = 5
     overflow = False
+    spanned = False
     if cancel is not None:
         _watch_cancel(client, cancel)
         if cancel.is_set():
@@ -229,7 +295,7 @@ def _attempt_run(
             update = params.get("update") if isinstance(params, dict) else None
             if not isinstance(update, dict):
                 return
-            _emit_session_update(sink, update, task_id=task_id)
+            _emit_session_update(sink, update, task_id=task_id, tracer=tracer)
 
         def on_permission(msg: dict[str, Any]) -> dict[str, Any]:
             params = msg.get("params") or {}
@@ -271,24 +337,52 @@ def _attempt_run(
                 }
             }
 
-        client.request_with_handlers(
-            "session/prompt",
-            {
-                "sessionId": session_acp_id,
-                "prompt": [{"type": "text", "text": prompt}],
-            },
-            on_update=on_update,
-            on_permission=on_permission,
-        )
-        try:
-            client.request_with_handlers("session/close", {"sessionId": session_acp_id})
-        except Exception:
-            pass
-        status = "ok"
-        exit_code = 0
+        with _invoke_agent(
+            tracer,
+            policy,
+            task_id=task_id,
+            conversation_id=str(session_acp_id or ""),
+            overflow_of=overflow_of,
+        ):
+            spanned = True
+            try:
+                client.request_with_handlers(
+                    "session/prompt",
+                    {
+                        "sessionId": session_acp_id,
+                        "prompt": [{"type": "text", "text": prompt}],
+                    },
+                    on_update=on_update,
+                    on_permission=on_permission,
+                )
+                try:
+                    client.request_with_handlers(
+                        "session/close", {"sessionId": session_acp_id}
+                    )
+                except Exception:
+                    pass
+                status = "ok"
+                exit_code = 0
+                tracer.record_result("ok")
+            except AuthRequired:
+                tracer.record_result("auth_missing")
+                raise
+            except Exception as inner:
+                if cancel is not None and cancel.is_set():
+                    tracer.record_result("ok")
+                elif _overflow_triggered(inner):
+                    tracer.record_result("rate_limit")
+                else:
+                    tracer.record_result("crash")
+                raise
     except AuthRequired:
         status = "auth"
         exit_code = _auth_missing(policy, task_id=task_id, log=log)
+        if not spanned:
+            with _invoke_agent(
+                tracer, policy, task_id=task_id, conversation_id=""
+            ):
+                tracer.record_result("auth_missing")
     except Exception as exc:
         if cancel is not None and cancel.is_set():
             status = "cancelled"
@@ -297,6 +391,15 @@ def _attempt_run(
         else:
             overflow = _overflow_triggered(exc)
             print(str(exc), file=sys.stderr)
+            if not spanned:
+                with _invoke_agent(
+                    tracer,
+                    policy,
+                    task_id=task_id,
+                    conversation_id=str(session_acp_id or ""),
+                    overflow_of=overflow_of,
+                ):
+                    tracer.record_result(_otel_result(status, overflow=overflow))
     finally:
         client.close()
         store.finish(
@@ -324,12 +427,14 @@ def run_prompt(
     ask: AskFn | None = None,
     yes: bool = False,
     cancel: threading.Event | None = None,
+    tracer: Tracer | None = None,
 ) -> int:
     cwd = cwd.resolve()
     task_id = str(uuid.uuid4())
     root = ravand_home()
     store = SessionStore(root)
     log = AuditLog(root)
+    tracer = tracer if tracer is not None else Tracer.from_env()
 
     ensure_profile_home(policy.home)
     log.emit(
@@ -342,8 +447,12 @@ def run_prompt(
     try:
         client = _connect(policy, cwd=cwd)
     except AuthRequired:
+        with _invoke_agent(tracer, policy, task_id=task_id, conversation_id=""):
+            tracer.record_result("auth_missing")
         return _auth_missing(policy, task_id=task_id, log=log)
     except Exception as exc:
+        with _invoke_agent(tracer, policy, task_id=task_id, conversation_id=""):
+            tracer.record_result("crash")
         print(str(exc), file=sys.stderr)
         log.emit(
             "run.ended",
@@ -380,6 +489,7 @@ def run_prompt(
         store=store,
         log=log,
         record=record,
+        tracer=tracer,
         ask=ask,
         yes=yes,
         cancel=cancel,
@@ -408,8 +518,24 @@ def run_prompt(
     try:
         overflow_client = _connect(overflow_policy, cwd=cwd)
     except AuthRequired:
+        with _invoke_agent(
+            tracer,
+            overflow_policy,
+            task_id=task_id,
+            conversation_id="",
+            overflow_of=record.id,
+        ):
+            tracer.record_result("auth_missing")
         return _auth_missing(overflow_policy, task_id=task_id, log=log)
     except Exception as exc:
+        with _invoke_agent(
+            tracer,
+            overflow_policy,
+            task_id=task_id,
+            conversation_id="",
+            overflow_of=record.id,
+        ):
+            tracer.record_result("crash")
         print(str(exc), file=sys.stderr)
         log.emit(
             "run.ended",
@@ -446,8 +572,10 @@ def run_prompt(
         store=store,
         log=log,
         record=overflow_record,
+        tracer=tracer,
         ask=ask,
         yes=yes,
         cancel=cancel,
+        overflow_of=record.id,
     )
     return overflow_exit
