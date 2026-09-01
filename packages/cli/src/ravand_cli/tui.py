@@ -86,6 +86,12 @@ class RavandApp(App[int]):
         color: #8a7e96;
         border-left: thick #4a4454;
     }
+    .turn-think {
+        background: #18161c;
+        color: #8a7e96;
+        border-left: thick #5c5470;
+        text-style: italic;
+    }
     #perm {
         height: auto;
         min-height: 3;
@@ -140,6 +146,7 @@ class RavandApp(App[int]):
         self._elapsed = 0
         self._activity = ""
         self._agent_turn: Turn | None = None
+        self._think_turn: Turn | None = None
 
     def compose(self) -> ComposeResult:
         yield Static("ravand", id="brand")
@@ -243,15 +250,17 @@ class RavandApp(App[int]):
     def _apply_event(self, event: dict[str, Any]) -> None:
         kind = event.get("type")
         if kind == "text.delta":
+            self._think_turn = None
             text = str(event.get("text") or "")
             if text:
                 self._write_stream(text)
         elif kind == "thinking.delta":
-            text = str(event.get("text") or "").strip()
+            text = str(event.get("text") or "")
             if text:
                 self._note_activity("thinking")
-                self._write_sys(f"thinking  ·  {text[:120]}")
+                self._append_think(text)
         elif kind == "tool.call":
+            self._think_turn = None
             tool = str(event.get("tool") or "tool")
             self._note_activity(tool)
             self._write_sys(f"▸ {tool}")
@@ -302,6 +311,19 @@ class RavandApp(App[int]):
         )
         self.call_from_thread(self._idle)
 
+    def _append_think(self, text: str) -> None:
+        if not self.is_attached:
+            return
+        try:
+            if self._think_turn is None:
+                self._think_turn = Turn("think", "thinking  ·  ")
+                self.query_one("#transcript", VerticalScroll).mount(self._think_turn)
+            self._think_turn.append(text)
+            self.query_one("#stream", Log).write(text)
+            self.query_one("#transcript", VerticalScroll).scroll_end(animate=False)
+        except Exception:
+            return
+
     def _note_activity(self, label: str) -> None:
         self._activity = label
         if self._busy:
@@ -321,6 +343,7 @@ class RavandApp(App[int]):
         self._busy = False
         self._activity = ""
         self._agent_turn = None
+        self._think_turn = None
         if not self.is_attached:
             return
         try:
