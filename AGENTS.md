@@ -106,7 +106,7 @@ v0 is **one process**. Do not stand up a bus or Postgres until v2 flags exist.
 
 ### Implementation order (do not skip)
 
-Read [docs/README.md](docs/README.md) build path before Slice 0. One GitHub issue per branch. TDD: write the failing pytest first, then the code.
+Leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. One GitHub issue per branch. TDD: write the failing pytest first, then the code. Do not start v1, Slice 6, or TUI. Issue 56 stays open. Do not implement issue 51.
 
 #### Slice 0: skeleton
 
