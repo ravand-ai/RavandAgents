@@ -7,7 +7,9 @@ Next: GitHub Project
 
 Grok reviews. Kimi 2.7 and Cursor Composer open PRs. Safe PRs merge without waiting for a human ping. Unsafe PRs stay open.
 
-Board: [Ravand v0](https://github.com/orgs/ravand-ai/projects/1)
+Board: [Ravand v0](https://github.com/orgs/ravand-ai/projects/1) · [Ravand v1](https://github.com/orgs/ravand-ai/projects/2)
+
+Sprints are GitHub **milestones**. Do not add `sprint-N` labels. Do not merge a PR whose issue still has an open **blocked by** parent. Plan, blockers, delivery, and sprint retro: [AGENTS.md](../AGENTS.md).
 
 ## Open a PR
 
@@ -45,7 +47,9 @@ If it is not safe: comment what failed, do not merge. Author (or overflow CLI) f
 
 ## After merge
 
-Update the GitHub Project card to Done. Unblock the next wave. Next Ready cards may run in parallel (Kimi + Cursor). Grok reviews those PRs.
+Update the GitHub Project card to Done. Unblock the next wave. Next Ready cards (no open `blocked by`) may run in parallel (Kimi + Cursor). Grok reviews those PRs.
+
+If this merge closes the last open issue on the milestone, write the sprint retro on the milestone (what shipped, what blocked, which loop we fell into), then plan the next milestone before you dispatch. See AGENTS.md.
 
 Stacked child PRs must retarget to `main` before the base branch is deleted.
 

@@ -3,7 +3,7 @@
 Reading: [docs map](docs/README.md)
 
 Previous: [Governance](docs/GOVERNANCE.md) and the example tomls
-Next: leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open. Do not implement issue 51.
+Next: leftover SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for 2 and 3) stay open. Do not claim those four hold. Do not unfreeze TUI ([#51](https://github.com/ravand-ai/RavandAgents/issues/51)). v1 work is the [Ravand v1](https://github.com/orgs/ravand-ai/projects/2) board. Sprints are **milestones**, not labels.
 
 This file has two parts. Stack, verify, and branches are for the task protocol. "Adopted product rules" is the implement contract. Skip to that heading if you are reading the design.
 
@@ -66,6 +66,54 @@ Use the plan mode of the current harness. Wait for the user to accept the plan. 
 Use the `coder` agent for Build and Verify when the harness has that agent.
 
 Use the `reviewer` agent for Review and the pull request draft when the harness has that agent.
+
+## Plan ahead, blockers, review, delivery
+
+Read this section before you open a ticket or start a builder. Chat memory is not the plan.
+
+### Plan ahead
+
+- The sprint is a GitHub **milestone** (`v1-s1-named-seats`, …). Do not add `sprint-N` labels.
+- Version is a label (`v0` or `v1`). A v1 title must not wear `v0`.
+- Board: [Ravand v0](https://github.com/orgs/ravand-ai/projects/1) and [Ravand v1](https://github.com/orgs/ravand-ai/projects/2).
+- Before a sprint starts: list the sprint deliverable in one sentence, then the issues, then GitHub **blocked by** links. Do not start coding until blockers are set.
+
+### Sorted by blockers
+
+- Ready = open issue, current milestone, **no** open `blocked by` parent.
+- Do not start a blocked card. Do not merge a PR whose issue is still blocked.
+- Parallel builders (Grok, Kimi, Cursor) only on Ready cards with **disjoint files**.
+- If you find extra work, open a new issue and set `blocked by` / `blocking`. Do not grow the current branch.
+
+### How to review
+
+Follow [docs/REVIEW.md](docs/REVIEW.md). Builder never merges. Grok runs the six-point checklist on the PR ref and shows the command output. Safe → squash-merge and delete the branch. Unsafe → comment, same branch. Retarget stacked children before you delete a base.
+
+### Escape the improvement loop
+
+Do not open a ticket whose only change is restating work that already shipped.
+
+A docs-only ticket is allowed only when a builder would take a **wrong action** without it (wrong command, wrong slice, wrong merge rule).
+
+If you are idle: take the next Ready **feature** on the current milestone. Do not invent a docs-accuracy card to look busy.
+
+Cap: at most one docs-accuracy issue per sprint, and only if a builder is actually lost.
+
+### Delivery first
+
+Ship the smallest feature that moves the sprint deliverable. Prefer failing pytest plus product code over prose.
+
+v1 sprint 1 deliverable: named CLI account under policy (`ravand which` / `run --account`, fail closed).
+
+v1 exit (later sprints): one project can say this job is work-grok ACP, that job is company-claude API, both under the same deny list.
+
+### Sprint retro and next plan
+
+When the current milestone has **zero** open issues:
+
+1. Comment on the milestone: what shipped, what blocked, which improvement loop we fell into (if any).
+2. Re-plan the next milestone: blockers first, drop cards that do not serve the v1 exit, set `blocked by` before dispatch.
+3. Then dispatch Ready disjoint cards. Do not skip the retro.
 
 ## Adopted product rules
 
