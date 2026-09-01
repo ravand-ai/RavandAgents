@@ -69,52 +69,98 @@ Use the `reviewer` agent for Review and the pull request draft when the harness 
 
 ## Plan ahead, blockers, review, delivery
 
-Read this section before you open a ticket or start a builder. Chat memory is not the plan.
+Read this section before you open a ticket or start a builder. Chat memory is not the plan. A compacted session must re-read this file, not invent process.
 
 ### Plan ahead
 
-- The sprint is a GitHub **milestone** (`v1-s1-named-seats`, …). Do not add `sprint-N` labels.
-- Version is a label (`v0` or `v1`). A v1 title must not wear `v0`.
-- Board: [Ravand v0](https://github.com/orgs/ravand-ai/projects/1) and [Ravand v1](https://github.com/orgs/ravand-ai/projects/2).
-- Before a sprint starts: list the sprint deliverable in one sentence, then the issues, then GitHub **blocked by** links. Do not start coding until blockers are set.
+The sprint is a GitHub **milestone** (`v1-s1-named-seats`, `v1-s2-policy-seams`, …). Do not add `sprint-N` labels.
+
+Version is a label (`v0` or `v1`). A v1 title must not wear `v0`.
+
+Board: [Ravand v0](https://github.com/orgs/ravand-ai/projects/1) and [Ravand v1](https://github.com/orgs/ravand-ai/projects/2).
+
+Before a sprint starts, write three things on the milestone (or a pinned issue):
+
+1. The sprint deliverable in one sentence.
+2. The issue list that serves that sentence.
+3. GitHub **blocked by** links for every dependent card.
+
+Do not start coding until those blockers are set.
+
+While builders code the current sprint, fill later-sprint backlog on the board. Set `blocked by` on those cards too. Do not dispatch a later-sprint card until the current milestone retro is done.
 
 ### Sorted by blockers
 
-- Ready = open issue, current milestone, **no** open `blocked by` parent.
-- Do not start a blocked card. Do not merge a PR whose issue is still blocked.
-- Parallel builders (Grok, Kimi, Cursor) only on Ready cards with **disjoint files**.
-- If you find extra work, open a new issue and set `blocked by` / `blocking`. Do not grow the current branch.
+Ready means all of these hold:
+
+- The issue is open.
+- The issue is on the **current** milestone.
+- Every GitHub `blocked by` parent is closed (or there is no parent).
+
+Check parents with:
+
+```
+gh api repos/ravand-ai/RavandAgents/issues/N/dependencies/blocked_by
+```
+
+Sort the board by that graph, not by issue number and not by who shouted last.
+
+Do not start a blocked card. Do not merge a PR whose issue still has an open `blocked by` parent.
+
+If you find extra work, open a new issue and set `blocked by` / `blocking`. Do not grow the current branch.
 
 ### How to review
 
-Follow [docs/REVIEW.md](docs/REVIEW.md). Builder never merges. Grok runs the six-point checklist on the PR ref and shows the command output. Safe → squash-merge and delete the branch. Unsafe → comment, same branch. Retarget stacked children before you delete a base.
+Follow [docs/REVIEW.md](docs/REVIEW.md). The builder never merges.
+
+Grok runs the six-point checklist on the PR ref and pastes the command output. Safe means squash-merge and delete the branch. Unsafe means comment and stay on the same branch. Retarget stacked children before you delete a base.
+
+### Why we check
+
+A green pytest is not a merge. Review exists because these faults still pass tests:
+
+- Policy or account resolution fails **open** (the product rule is fail closed).
+- A secret, cookie path, `sk-`, `xai-`, or `Bearer` lands in the diff.
+- The build backend becomes hatchling.
+- A new PyPI dep arrives without an issue that named it.
+- The PR is still blocked by an open parent.
+- TUI (#51) or leftover SUCCESS (#56) gets closed by accident.
+
+The six-point checklist is the merge gate so a human does not re-read every diff. If a point is not green, the PR is not safe. Do not merge on vibe.
 
 ### Escape the improvement loop
 
-Do not open a ticket whose only change is restating work that already shipped.
+You are in the loop when the only change is restating work that already shipped (README build path, AGENTS slice order, "leftover is SUCCESS" said a fifth time).
+
+Stop. Close that ticket. Do not open another one like it.
 
 A docs-only ticket is allowed only when a builder would take a **wrong action** without it (wrong command, wrong slice, wrong merge rule).
 
-If you are idle: take the next Ready **feature** on the current milestone. Do not invent a docs-accuracy card to look busy.
+If you are idle, take the next Ready **feature** on the **current** milestone. Do not invent a docs-accuracy card to look busy.
 
 Cap: at most one docs-accuracy issue per sprint, and only if a builder is actually lost.
 
 ### Delivery first
 
-Ship the smallest feature that moves the sprint deliverable. Prefer failing pytest plus product code over prose.
+Ship as many current-sprint features as the blocker DAG allows. Prefer a failing pytest plus product code over prose.
 
-v1 sprint 1 deliverable: named CLI account under policy (`ravand which` / `run --account`, fail closed).
+Dispatch every Ready current-sprint card that has **disjoint files**. Grok, Kimi, and Cursor may run at the same time. One builder per issue. Do not serialize Ready disjoint work.
+
+Do not pull a later-sprint card forward to look busy while the current milestone still has Ready features. Do not idle on docs while a Ready feature exists.
+
+v1 sprint 1 deliverable: named CLI account under policy (`ravand which` / `run --account`, fail closed), plus hooks and file memory as unblocked seats.
 
 v1 exit (later sprints): one project can say this job is work-grok ACP, that job is company-claude API, both under the same deny list.
 
 ### Sprint retro and next plan
 
-When the current milestone has **zero** open issues:
+A sprint finishes when the current milestone has **zero** open issues. Then do this, in order. Do not skip.
 
-1. Comment on the milestone: what shipped, what blocked, which improvement loop we fell into (if any).
-2. Re-plan the next milestone: blockers first, drop cards that do not serve the v1 exit, set `blocked by` before dispatch.
-3. Then dispatch Ready disjoint cards. Do not skip the retro.
+1. Retro. Comment on the milestone: what shipped, what stayed blocked, which improvement loop we fell into (if any). Name the PRs.
+2. Plan the next milestone. Keep only cards that serve the v1 exit. Drop the rest. Set `blocked by` before anyone codes.
+3. Dispatch Ready disjoint **feature** cards for that next sprint. Fill further-sprint backlog after that, not instead of it.
 
+Do not start the next sprint's builders before the retro comment exists. Do not treat a finished sprint as a reason to rewrite docs. The next action is the next feature.
 ## Adopted product rules
 
 You are implementing Ravand Agents, a modular agent control plane. v0 is local ACP over subscription CLIs. Later slices add named LLM accounts, a native loop, sandboxes, workflows, and cloud users.
