@@ -48,6 +48,40 @@ def test_status_this_repo_shows_work_default_overflow_and_registered_cursor(
     assert "registered" in text
 
 
+def test_status_grok_missing_without_auth_json(isolated_home: Path) -> None:
+    result = run_ravand_status(cwd=REPO_ROOT, home=isolated_home)
+    text = combined_output(result).lower()
+    assert result.returncode == 0, combined_output(result)
+    grok_line = next(
+        (line for line in text.splitlines() if line.startswith("grok")),
+        "",
+    )
+    assert grok_line, combined_output(result)
+    assert "missing" in grok_line
+    assert "logged-in" not in grok_line
+
+
+def test_status_grok_logged_in_when_auth_json_exists(isolated_home: Path) -> None:
+    auth = (
+        isolated_home
+        / ".ravand"
+        / "profiles"
+        / "work"
+        / ".grok"
+        / "auth.json"
+    )
+    auth.parent.mkdir(parents=True, exist_ok=True)
+    auth.write_text("{}", encoding="utf-8")
+    result = run_ravand_status(cwd=REPO_ROOT, home=isolated_home)
+    text = combined_output(result).lower()
+    assert result.returncode == 0, combined_output(result)
+    grok_line = next(
+        (line for line in text.splitlines() if line.startswith("grok")),
+        "",
+    )
+    assert "logged-in" in grok_line, combined_output(result)
+
+
 def test_status_customer_personal_is_denied(isolated_home: Path, tmp_path: Path) -> None:
     repo = tmp_path / "customer-repo"
     repo.mkdir()
