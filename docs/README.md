@@ -42,7 +42,7 @@ Do not start this path until you have finished the design path.
 
 | Slice | What you ship | Read before you code | Next slice |
 |-------|---------------|----------------------|------------|
-| 0 | `uv` workspace, `ravand` console script, not implemented | Product README, HLD services list, AGENTS.md Slice 0 | 1 |
+| 0 | shipped — `uv` workspace, `ravand` console script exists. Leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open. Do not implement issue 51. | Product README, HLD services list, AGENTS.md Slice 0 | 1 |
 | 1 | `ravand which`, `ravand login`, profile dirs, policy tests | SCHEMA.md, both example tomls, HLD Policy / Profile / Registry | 2 |
 | 2 | ACP runtime, `ravand run --format jsonl` | HLD ACP Runtime, SCHEMA SessionEvent | 3 |
 | 3 | `~/.ravand/sessions/` and `audit.jsonl` | SCHEMA SessionRecord and Audit event, HLD Session and Audit | 4 |
