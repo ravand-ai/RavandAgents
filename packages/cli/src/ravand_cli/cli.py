@@ -13,7 +13,7 @@ from ravand_registry import login_hint
 from ravand_cli.ask import confirm_permission, confirm_plan, should_ask
 from ravand_cli.status import run_status
 from ravand_cli.tui import run_tui
-from ravand_runtime import audit_agent_denied, run_prompt
+from ravand_runtime import audit_agent_denied, run_prompt, steer_prompt
 from ravand_runtime.plan import plan_mode_active
 
 NOT_IMPLEMENTED = "not implemented"
@@ -40,6 +40,9 @@ def _parser() -> argparse.ArgumentParser:
     login.add_argument("profile", nargs="?", default=None)
     sub.add_parser("status", help="login doctor")
     sub.add_parser("tui", help="operator screen (TTY)")
+    steer = sub.add_parser("steer", help="continue a live session")
+    steer.add_argument("session_id")
+    steer.add_argument("text")
     return parser
 
 
@@ -123,6 +126,13 @@ def _run(args: argparse.Namespace) -> int:
     )
 
 
+def _steer(args: argparse.Namespace) -> int:
+    def sink(event: dict) -> None:
+        print(json.dumps(event), flush=True)
+
+    return steer_prompt(args.session_id, args.text, sink=sink)
+
+
 def _login(args: argparse.Namespace) -> int:
     profile = args.profile
     try:
@@ -157,6 +167,8 @@ def main(argv: list[str] | None = None) -> int:
         return _login(args)
     if args.command == "run":
         return _run(args)
+    if args.command == "steer":
+        return _steer(args)
     if args.command == "status":
         return run_status(Path.cwd())
     if args.command == "tui":

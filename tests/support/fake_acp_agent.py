@@ -15,6 +15,7 @@ import sys
 AUTH_MODE = os.environ.get("FAKE_ACP_AUTH", "")
 STATE_PATH = os.environ.get("FAKE_ACP_STATE", "")
 MEMORY_MARKER = os.environ.get("FAKE_ACP_MEMORY_MARKER", "")
+PROMPT_LOG = os.environ.get("FAKE_ACP_PROMPT_LOG", "")
 
 auth_failed = False
 
@@ -23,6 +24,12 @@ def _mark_spawn() -> None:
     if STATE_PATH:
         with open(STATE_PATH, "a", encoding="utf-8") as handle:
             handle.write("spawned-after-auth-failure\n")
+
+
+def _log_prompt(params: dict) -> None:
+    if PROMPT_LOG:
+        with open(PROMPT_LOG, "a", encoding="utf-8") as handle:
+            handle.write(json.dumps(params) + "\n")
 
 
 def _read() -> dict | None:
@@ -50,7 +57,7 @@ def main() -> None:
         if method == "initialize":
             result: dict = {
                 "protocolVersion": 1,
-                "agentCapabilities": {"loadSession": False},
+                "agentCapabilities": {"loadSession": bool(PROMPT_LOG)},
             }
             if AUTH_MODE in {"required", "cached"}:
                 result["authMethods"] = [
@@ -73,10 +80,35 @@ def main() -> None:
             if auth_failed:
                 _mark_spawn()
             _write({"jsonrpc": "2.0", "id": mid, "result": {"sessionId": "sess-test"}})
+        elif method == "session/load":
+            if auth_failed:
+                _mark_spawn()
+            sid = params.get("sessionId") or params.get("acpSessionId")
+            _write({"jsonrpc": "2.0", "id": mid, "result": {"sessionId": sid}})
         elif method == "session/prompt":
             if auth_failed:
                 _mark_spawn()
+            _log_prompt(params)
             prompt = json.dumps(params)
+            if "please continue" in prompt:
+                sid = params.get("sessionId")
+                _write(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "session/update",
+                        "params": {
+                            "sessionId": sid,
+                            "update": {
+                                "sessionUpdate": "agent_message_chunk",
+                                "content": {"type": "text", "text": "steer-ok"},
+                            },
+                        },
+                    }
+                )
+                _write(
+                    {"jsonrpc": "2.0", "id": mid, "result": {"stopReason": "end_turn"}}
+                )
+                continue
             if "passwd" in prompt:
                 req_id = next_req
                 next_req += 1
