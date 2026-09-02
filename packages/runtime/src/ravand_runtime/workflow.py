@@ -3,21 +3,14 @@
 from __future__ import annotations
 
 import tomllib
-import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 from ravand_audit import AuditLog
-from ravand_policy import (
-    PolicyDenied,
-    UnknownAgent,
-    ravand_home,
-    require_function,
-    resolve,
-)
-from ravand_runtime.dispatch import dispatch
-from ravand_sessions import FailClosed, SessionStore
+from ravand_policy import PolicyDenied, ravand_home
+from ravand_runtime.step_runner import run_policy_steps
+from ravand_sessions import SessionStore
 
 _WORKFLOW_KEYS = frozenset({"id", "steps"})
 _STEP_KEYS = frozenset(
@@ -172,29 +165,6 @@ def load_workflow(cwd: Path) -> Workflow | None:
     )
 
 
-def _deny(
-    workflow: Workflow,
-    step: WorkflowStep | None,
-    *,
-    cwd: Path,
-    audit: AuditLog,
-    detail: str,
-    profile: str | None = None,
-    agent: str | None = None,
-) -> None:
-    task_id = workflow.id or "workflow"
-    if step is not None:
-        task_id = f"{task_id}:{step.id}"
-    audit.emit(
-        "agent.denied",
-        task_id=task_id,
-        profile=profile,
-        agent=agent,
-        cwd=str(cwd),
-        detail=detail,
-    )
-
-
 def run_workflow(
     cwd: Path,
     *,
@@ -209,70 +179,13 @@ def run_workflow(
     if workflow is None:
         return []
     ordered = _topo(workflow.steps)
-    planned: list[tuple[WorkflowStep, object]] = []
-    for step in ordered:
-        try:
-            policy = resolve(
-                cwd,
-                agent_override=step.agent,
-                account_override=step.account,
-            )
-        except (PolicyDenied, UnknownAgent) as exc:
-            _deny(
-                workflow,
-                step,
-                cwd=cwd,
-                audit=log,
-                detail=str(exc),
-            )
-            raise
-        try:
-            for name in step.functions:
-                require_function(policy, name)
-            for name in step.subagents:
-                resolve(
-                    cwd,
-                    agent_override=name,
-                    account_override=step.account,
-                )
-        except (PolicyDenied, UnknownAgent) as exc:
-            _deny(
-                workflow,
-                step,
-                cwd=cwd,
-                audit=log,
-                detail=str(exc),
-                profile=policy.profile,
-                agent=policy.agent,
-            )
-            raise
-        planned.append((step, policy))
-    executed: list[WorkflowStep] = []
-    for step, _policy in planned:
-        if run is not None:
-            run(step)
-        elif bus is not None:
-            if store is None:
-                raise PolicyDenied("workflow dispatch requires a session store")
-            wf_id = workflow.id or "workflow"
-            try:
-                dispatch(
-                    cwd,
-                    step.prompt,
-                    bus=bus,
-                    store=store,
-                    task_id=f"{wf_id}:{step.id}:{uuid.uuid4()}",
-                    agent_override=step.agent,
-                    account_override=step.account,
-                )
-            except FailClosed:
-                _deny(
-                    workflow,
-                    step,
-                    cwd=cwd,
-                    audit=log,
-                    detail="dispatch failed",
-                )
-                raise
-        executed.append(step)
-    return executed
+    return run_policy_steps(
+        ordered,
+        cwd=cwd,
+        root_id=workflow.id or "workflow",
+        kind="workflow",
+        bus=bus,
+        store=store,
+        audit=log,
+        run=run,
+    )

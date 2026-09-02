@@ -3,21 +3,14 @@
 from __future__ import annotations
 
 import tomllib
-import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 from ravand_audit import AuditLog
-from ravand_policy import (
-    PolicyDenied,
-    UnknownAgent,
-    ravand_home,
-    require_function,
-    resolve,
-)
-from ravand_runtime.dispatch import dispatch
-from ravand_sessions import FailClosed, SessionStore
+from ravand_policy import PolicyDenied, ravand_home
+from ravand_runtime.step_runner import run_policy_steps
+from ravand_sessions import SessionStore
 
 _PIPELINE_KEYS = frozenset({"id", "stages"})
 _STAGE_KEYS = frozenset(
@@ -149,29 +142,6 @@ def load_pipeline(cwd: Path) -> Pipeline | None:
     )
 
 
-def _deny(
-    pipeline: Pipeline,
-    stage: PipelineStage | None,
-    *,
-    cwd: Path,
-    audit: AuditLog,
-    detail: str,
-    profile: str | None = None,
-    agent: str | None = None,
-) -> None:
-    task_id = pipeline.id or "pipeline"
-    if stage is not None:
-        task_id = f"{task_id}:{stage.id}"
-    audit.emit(
-        "agent.denied",
-        task_id=task_id,
-        profile=profile,
-        agent=agent,
-        cwd=str(cwd),
-        detail=detail,
-    )
-
-
 def run_pipeline(
     cwd: Path,
     *,
@@ -185,70 +155,13 @@ def run_pipeline(
     pipeline = load_pipeline(cwd)
     if pipeline is None:
         return []
-    planned: list[tuple[PipelineStage, object]] = []
-    for stage in pipeline.stages:
-        try:
-            policy = resolve(
-                cwd,
-                agent_override=stage.agent,
-                account_override=stage.account,
-            )
-        except (PolicyDenied, UnknownAgent) as exc:
-            _deny(
-                pipeline,
-                stage,
-                cwd=cwd,
-                audit=log,
-                detail=str(exc),
-            )
-            raise
-        try:
-            for name in stage.functions:
-                require_function(policy, name)
-            for name in stage.subagents:
-                resolve(
-                    cwd,
-                    agent_override=name,
-                    account_override=stage.account,
-                )
-        except (PolicyDenied, UnknownAgent) as exc:
-            _deny(
-                pipeline,
-                stage,
-                cwd=cwd,
-                audit=log,
-                detail=str(exc),
-                profile=policy.profile,
-                agent=policy.agent,
-            )
-            raise
-        planned.append((stage, policy))
-    executed: list[PipelineStage] = []
-    for stage, _policy in planned:
-        if run is not None:
-            run(stage)
-        elif bus is not None:
-            if store is None:
-                raise PolicyDenied("pipeline dispatch requires a session store")
-            pipe_id = pipeline.id or "pipeline"
-            try:
-                dispatch(
-                    cwd,
-                    stage.prompt,
-                    bus=bus,
-                    store=store,
-                    task_id=f"{pipe_id}:{stage.id}:{uuid.uuid4()}",
-                    agent_override=stage.agent,
-                    account_override=stage.account,
-                )
-            except FailClosed:
-                _deny(
-                    pipeline,
-                    stage,
-                    cwd=cwd,
-                    audit=log,
-                    detail="dispatch failed",
-                )
-                raise
-        executed.append(stage)
-    return executed
+    return run_policy_steps(
+        pipeline.stages,
+        cwd=cwd,
+        root_id=pipeline.id or "pipeline",
+        kind="pipeline",
+        bus=bus,
+        store=store,
+        audit=log,
+        run=run,
+    )
