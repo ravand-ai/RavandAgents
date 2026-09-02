@@ -3,7 +3,7 @@
 Reading: [docs map](docs/README.md)
 
 Previous: [Governance](docs/GOVERNANCE.md) and the example tomls
-Next: leftover CLI is [`ravand init`](https://github.com/ravand-ai/RavandAgents/issues/162). SUCCESS [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed. Four SUCCESS checks hold. Do not grow TUI ([#51](https://github.com/ravand-ai/RavandAgents/issues/51)). Current feature milestone is [v2-s1-bus](https://github.com/ravand-ai/RavanAgents/milestone/6). Sprints are **milestones**, not labels.
+Next: leftover CLI is [`ravand init`](https://github.com/ravand-ai/RavandAgents/issues/162). SUCCESS [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed. Four SUCCESS checks hold. Do not grow TUI ([#51](https://github.com/ravand-ai/RavandAgents/issues/51)). Current feature milestone is [v2-s1-bus](https://github.com/ravand-ai/RavandAgents/milestone/6). Sprints are **milestones**, not labels.
 
 This file has two parts. Stack, verify, and branches are for the task protocol. "Adopted product rules" is the implement contract. Skip to that heading if you are reading the design.
 
