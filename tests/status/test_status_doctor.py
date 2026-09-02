@@ -82,6 +82,17 @@ def test_status_grok_logged_in_when_auth_json_exists(isolated_home: Path) -> Non
     assert "logged-in" in grok_line, combined_output(result)
 
 
+def test_status_empty_dir_tells_human_to_run_init(
+    isolated_home: Path, tmp_path: Path
+) -> None:
+    repo = tmp_path / "empty"
+    repo.mkdir()
+    result = run_ravand_status(cwd=repo, home=isolated_home)
+    text = combined_output(result)
+    assert "traceback" not in text.lower()
+    assert result.returncode != 0 or "ravand init" in text
+
+
 def test_status_customer_personal_is_denied(isolated_home: Path, tmp_path: Path) -> None:
     repo = tmp_path / "customer-repo"
     repo.mkdir()
