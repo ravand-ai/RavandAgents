@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tomllib
 from pathlib import Path
 
 from ravand_policy import FailClosed, PolicyDenied, UnknownAgent, resolve
@@ -251,9 +252,20 @@ def _login(args: argparse.Namespace) -> int:
     ensure_profile_home(policy.home)
     print(f"profile {policy.profile}")
     print(f"home {policy.home}")
-    print(f"HOME={policy.home} {login_hint(policy.agent)}")
-    if policy.overflow_agent:
-        print(f"HOME={policy.home} {login_hint(policy.overflow_agent)}")
+    agent_ids: list[str] = []
+    harness_path = Path.cwd() / "harness.toml"
+    if harness_path.is_file():
+        with harness_path.open("rb") as handle:
+            harness = tomllib.load(handle)
+        agents = harness.get("agents") or {}
+        if isinstance(agents, dict):
+            agent_ids = sorted(str(key) for key in agents)
+    if not agent_ids:
+        agent_ids = [policy.agent]
+        if policy.overflow_agent and policy.overflow_agent not in agent_ids:
+            agent_ids.append(policy.overflow_agent)
+    for agent_id in agent_ids:
+        print(f"HOME={policy.home} {login_hint(agent_id)}")
     print(f"HOME={policy.home} gh auth login")
     return 0
 
