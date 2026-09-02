@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tomllib
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -260,7 +261,7 @@ def run_workflow(
                     step.prompt,
                     bus=bus,
                     store=store,
-                    task_id=f"{wf_id}:{step.id}",
+                    task_id=f"{wf_id}:{step.id}:{uuid.uuid4()}",
                     agent_override=step.agent,
                     account_override=step.account,
                 )

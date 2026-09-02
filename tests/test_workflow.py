@@ -141,10 +141,10 @@ def test_run_steps_in_topo_order_dispatches(
     second = bus.read(QUEUE_TASKS, visibility_timeout=600)
     assert first is not None
     assert second is not None
-    assert first.task_id == "ship:lint"
+    assert first.task_id.startswith("ship:lint:")
     assert first.prompt == "run linter"
     assert first.agent == "grok"
-    assert second.task_id == "ship:review"
+    assert second.task_id.startswith("ship:review:")
     assert second.prompt == "review the diff"
     assert second.agent == "kimi"
     assert bus.read(QUEUE_TASKS, visibility_timeout=600) is None
