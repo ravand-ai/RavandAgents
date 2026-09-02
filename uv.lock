@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 members = [
     "ravand-agents",
     "ravand-audit",
+    "ravand-bus",
     "ravand-cli",
     "ravand-hooks",
     "ravand-memory",
@@ -147,6 +148,7 @@ dependencies = [
 dev = [
     { name = "pytest" },
     { name = "ravand-audit" },
+    { name = "ravand-bus" },
     { name = "ravand-hooks" },
     { name = "ravand-memory" },
     { name = "ravand-plugins" },
@@ -160,6 +162,7 @@ requires-dist = [{ name = "ravand-cli", editable = "packages/cli" }]
 dev = [
     { name = "pytest", specifier = ">=8" },
     { name = "ravand-audit", editable = "packages/audit" },
+    { name = "ravand-bus", editable = "packages/bus" },
     { name = "ravand-hooks", editable = "packages/hooks" },
     { name = "ravand-memory", editable = "packages/memory" },
     { name = "ravand-plugins", editable = "packages/plugins" },
@@ -170,6 +173,11 @@ dev = [
 name = "ravand-audit"
 version = "0.0.0"
 source = { editable = "packages/audit" }
+
+[[package]]
+name = "ravand-bus"
+version = "0.0.0"
+source = { editable = "packages/bus" }
 
 [[package]]
 name = "ravand-cli"
