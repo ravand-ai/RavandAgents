@@ -229,9 +229,10 @@ def _login(args: argparse.Namespace) -> int:
     ensure_profile_home(policy.home)
     print(f"profile {policy.profile}")
     print(f"home {policy.home}")
-    print(login_hint(policy.agent))
+    print(f"HOME={policy.home} {login_hint(policy.agent)}")
     if policy.overflow_agent:
-        print(login_hint(policy.overflow_agent))
+        print(f"HOME={policy.home} {login_hint(policy.overflow_agent)}")
+    print(f"HOME={policy.home} gh auth login")
     return 0
 
 

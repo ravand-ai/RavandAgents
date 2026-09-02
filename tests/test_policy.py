@@ -128,3 +128,30 @@ def test_login_prints_hints_not_secrets(tmp_path: Path) -> None:
     assert "sk-" not in text
     assert "xai-" not in text
     assert "bearer" not in text
+
+
+def test_login_prints_home_prefixed_vendor_and_gh(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _write_harness(repo)
+    home = tmp_path / "home"
+    env = os.environ.copy()
+    env["HOME"] = str(home)
+    env.pop("RAVAND_HOME", None)
+    result = subprocess.run(
+        ["uv", "run", "ravand", "login", "work"],
+        cwd=repo,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    profile_home = home / ".ravand" / "profiles" / "work"
+    out = result.stdout
+    assert f"HOME={profile_home} grok login" in out
+    assert f"HOME={profile_home} kimi login" in out
+    assert f"HOME={profile_home} gh auth login" in out
+    lowered = (out + result.stderr).lower()
+    assert "sk-" not in lowered
+    assert "xai-" not in lowered
+    assert "bearer" not in lowered
