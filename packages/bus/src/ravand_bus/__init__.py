@@ -71,6 +71,10 @@ class Bus:
         self._monotonic = monotonic or time.monotonic
         self._queues: dict[str, list[_Entry]] = {name: [] for name in QUEUES}
 
+    def require_reachable(self) -> None:
+        """In-memory provider is always reachable."""
+        return
+
     def _require_queue(self, queue: str) -> list[_Entry]:
         entries = self._queues.get(queue)
         if entries is None:

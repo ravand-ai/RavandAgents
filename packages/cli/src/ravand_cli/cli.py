@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-from ravand_policy import PolicyDenied, UnknownAgent, resolve
+from ravand_policy import FailClosed, PolicyDenied, UnknownAgent, resolve
 from ravand_profile import ensure_profile_home
 from ravand_registry import login_hint
 from ravand_cli.ask import confirm_permission, confirm_plan, should_ask
@@ -90,6 +90,9 @@ def _which(args: argparse.Namespace) -> int:
     except UnknownAgent as exc:
         print(str(exc), file=sys.stderr)
         return exc.exit_code
+    except FailClosed as exc:
+        print(str(exc), file=sys.stderr)
+        return exc.exit_code
     ensure_profile_home(policy.home)
     payload = {
         "profile": policy.profile,
@@ -128,6 +131,10 @@ def _run(args: argparse.Namespace) -> int:
         print(str(exc), file=sys.stderr)
         return exc.exit_code
     except UnknownAgent as exc:
+        print(str(exc), file=sys.stderr)
+        return exc.exit_code
+    except FailClosed as exc:
+        audit_agent_denied(str(exc), cwd=Path.cwd())
         print(str(exc), file=sys.stderr)
         return exc.exit_code
     if policy.loop == "native":

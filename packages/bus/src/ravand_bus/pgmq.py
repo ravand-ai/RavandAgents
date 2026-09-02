@@ -74,6 +74,10 @@ class PgmqBus:
         for name in QUEUES:
             self._execute("SELECT pgmq.create(%s)", (_pgmq_queue(name),))
 
+    def require_reachable(self) -> None:
+        """Fail closed when the Postgres connection is down."""
+        self._execute("SELECT 1", ())
+
     def _execute(self, sql: str, params: tuple) -> object:
         try:
             return self._conn.execute(sql, params)
