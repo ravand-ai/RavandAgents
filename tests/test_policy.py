@@ -150,7 +150,16 @@ def test_login_prints_home_prefixed_vendor_and_gh(tmp_path: Path) -> None:
     out = result.stdout
     assert f"HOME={profile_home} grok login" in out
     assert f"HOME={profile_home} kimi login" in out
+    assert f"HOME={profile_home} cursor-agent" in out
     assert f"HOME={profile_home} gh auth login" in out
+    gh_line = next(line for line in out.splitlines() if line.endswith("gh auth login"))
+    agent_lines = [
+        line
+        for line in out.splitlines()
+        if line.startswith(f"HOME={profile_home} ") and not line.endswith("gh auth login")
+    ]
+    assert agent_lines
+    assert out.index(agent_lines[-1]) < out.index(gh_line)
     lowered = (out + result.stderr).lower()
     assert "sk-" not in lowered
     assert "xai-" not in lowered
