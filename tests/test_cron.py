@@ -147,7 +147,7 @@ def test_fire_due_job_dispatches_after_policy(
     assert [job.id for job in fired] == ["morning"]
     got = bus.read(QUEUE_TASKS, visibility_timeout=600)
     assert got is not None
-    assert got.task_id == "morning"
+    assert got.task_id == "morning:20260907T0900"
     assert got.prompt == "status"
     assert got.agent == "grok"
     assert got.profile == "work"
@@ -316,6 +316,70 @@ def test_secret_ref_is_accepted(
     assert got is not None
     assert got.prompt == "status"
     assert "sk-" not in got.prompt
+
+
+def test_two_mondays_mint_distinct_task_ids(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    home.mkdir()
+    _write_harness(
+        repo,
+        extra=(
+            "[cron]\n"
+            "jobs = [{ id = \"morning\", spec = \"0 9 * * 1-5\", "
+            'prompt = "status" }]\n'
+        ),
+    )
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    bus = Bus()
+    store = SessionStore(home)
+    first = fire_cron(
+        repo, now=DUE, bus=bus, store=store, audit=AuditLog(home)
+    )
+    later = datetime(2026, 9, 14, 9, 0, tzinfo=UTC)
+    second = fire_cron(
+        repo, now=later, bus=bus, store=store, audit=AuditLog(home)
+    )
+    assert [job.id for job in first] == ["morning"]
+    assert [job.id for job in second] == ["morning"]
+    ids = {bus.read(QUEUE_TASKS, visibility_timeout=600).task_id for _ in range(2)}
+    assert ids == {"morning:20260907T0900", "morning:20260914T0900"}
+
+
+def test_double_tick_same_minute_skips_second_start(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    home.mkdir()
+    _write_harness(
+        repo,
+        extra=(
+            "[cron]\n"
+            "jobs = [{ id = \"morning\", spec = \"0 9 * * 1-5\", "
+            'prompt = "status" }, '
+            '{ id = \"standdown\", spec = \"0 9 * * 1-5\", '
+            'prompt = "later" }]\n'
+        ),
+    )
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    bus = Bus()
+    store = SessionStore(home)
+    first = fire_cron(
+        repo, now=DUE, bus=bus, store=store, audit=AuditLog(home)
+    )
+    second = fire_cron(
+        repo, now=DUE, bus=bus, store=store, audit=AuditLog(home)
+    )
+    assert [job.id for job in first] == ["morning", "standdown"]
+    assert second == []
+    got = {
+        bus.read(QUEUE_TASKS, visibility_timeout=600).task_id for _ in range(2)
+    }
+    assert got == {"morning:20260907T0900", "standdown:20260907T0900"}
+    assert bus.read(QUEUE_TASKS, visibility_timeout=600) is None
 
 
 def test_no_bus_still_runs_policy(

@@ -10,7 +10,7 @@ from pathlib import Path
 from ravand_audit import AuditLog
 from ravand_policy import PolicyDenied, UnknownAgent, ravand_home, resolve
 from ravand_runtime.dispatch import dispatch
-from ravand_sessions import SessionStore
+from ravand_sessions import FailClosed, SessionStore
 
 _JOB_KEYS = frozenset(
     {"id", "spec", "prompt", "agent", "account", "classification", "secret_ref"}
@@ -256,14 +256,18 @@ def fire_cron(
         if bus is not None:
             if store is None:
                 raise PolicyDenied("cron dispatch requires a session store")
-            dispatch(
-                cwd,
-                job.prompt,
-                bus=bus,
-                store=store,
-                task_id=job.id,
-                agent_override=job.agent,
-                account_override=job.account,
-            )
+            occurrence = instant.strftime("%Y%m%dT%H%M")
+            try:
+                dispatch(
+                    cwd,
+                    job.prompt,
+                    bus=bus,
+                    store=store,
+                    task_id=f"{job.id}:{occurrence}",
+                    agent_override=job.agent,
+                    account_override=job.account,
+                )
+            except FailClosed:
+                continue
         fired.append(job)
     return fired
