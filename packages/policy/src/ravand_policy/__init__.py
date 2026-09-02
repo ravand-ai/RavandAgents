@@ -9,6 +9,7 @@ from ravand_policy.resolve import (
     resolve,
 )
 from ravand_policy.users import ProjectAccess, resolve_access
+from ravand_policy.vault import load_secret, require_secret_ref, secret_present
 
 __all__ = [
     "FailClosed",
@@ -21,4 +22,7 @@ __all__ = [
     "require_skill",
     "resolve",
     "resolve_access",
+    "load_secret",
+    "require_secret_ref",
+    "secret_present",
 ]

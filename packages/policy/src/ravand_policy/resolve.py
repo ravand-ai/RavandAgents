@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ravand_policy.errors import PolicyDenied, UnknownAgent
+from ravand_policy.vault import secret_present
 
 
 def ravand_home() -> Path:
@@ -55,22 +56,6 @@ def _user_config(home: Path) -> dict:
     return _load_toml(path)
 
 
-def _secret_present(secret_ref: str, *, home: Path) -> None:
-    if not secret_ref.startswith("vault:"):
-        raise PolicyDenied("secret_ref must use vault:")
-    rel = secret_ref.removeprefix("vault:")
-    if not rel or rel.startswith("/") or ".." in Path(rel).parts:
-        raise PolicyDenied("secret_ref path is invalid")
-    root = (home / "secrets").resolve()
-    path = (home / "secrets" / rel).resolve()
-    try:
-        path.relative_to(root)
-    except ValueError as exc:
-        raise PolicyDenied("secret_ref path escaped") from exc
-    if not path.is_file() or path.stat().st_size == 0:
-        raise PolicyDenied("secret_ref is missing")
-
-
 def _is_personal_account(account_id: str, record: dict) -> bool:
     if "personal" in account_id:
         return True
@@ -105,7 +90,7 @@ def _resolve_account(
         secret_ref = str(record.get("secret_ref") or "").strip()
         if not secret_ref:
             raise PolicyDenied(f"account {account_id!r} secret_ref is missing")
-        _secret_present(secret_ref, home=ravand_home())
+        secret_present(secret_ref, home=ravand_home())
     elif kind == "cli":
         account_agent = str(record.get("agent", ""))
         if account_agent != agent:
