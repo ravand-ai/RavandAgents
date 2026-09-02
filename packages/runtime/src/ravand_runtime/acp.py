@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import json
 import os
+import select
 import subprocess
 import threading
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+
+_DEFAULT_HANDSHAKE_TIMEOUT = 30.0
+_HANDSHAKE_METHODS = frozenset({"initialize", "authenticate"})
 
 
 class AcpError(Exception):
@@ -30,6 +35,13 @@ def is_auth_error(exc: AcpError) -> bool:
     return "-32000" in text or "authentication required" in text
 
 
+def _handshake_timeout_sec() -> float:
+    raw = os.environ.get("RAVAND_ACP_HANDSHAKE_TIMEOUT")
+    if raw is None or raw == "":
+        return _DEFAULT_HANDSHAKE_TIMEOUT
+    return float(raw)
+
+
 def ensure_authenticated(
     client: AcpClient,
     init_result: dict[str, Any],
@@ -41,7 +53,7 @@ def ensure_authenticated(
     Tries the advertised ``cached_token`` method (existing session) first,
     then any other advertised method id. Only method ids are sent; token
     material is never read, sent, or logged. Raises AuthRequired when no
-    advertised method succeeds.
+    advertised method succeeds, or when authenticate times out.
     """
     methods = init_result.get("authMethods") or []
     ids: list[str] = []
@@ -53,8 +65,14 @@ def ensure_authenticated(
     candidates = ["cached_token", *[mid for mid in ids if mid != "cached_token"]]
     for method_id in candidates:
         try:
-            client.request_with_handlers("authenticate", {"methodId": method_id})
+            client.request_with_handlers(
+                "authenticate",
+                {"methodId": method_id},
+                agent=agent,
+            )
             return
+        except AuthRequired:
+            raise
         except AcpError:
             continue
     raise AuthRequired(agent)
@@ -97,17 +115,31 @@ class AcpClient:
         self._proc.stdin.write(raw.encode())
         self._proc.stdin.flush()
 
-    def _read(self) -> dict[str, Any] | None:
+    def _wait_readable(self, deadline: float | None) -> None:
+        if deadline is None:
+            return
         assert self._proc.stdout is not None
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("ACP handshake timed out")
+        ready, _, _ = select.select([self._proc.stdout], [], [], remaining)
+        if not ready:
+            raise TimeoutError("ACP handshake timed out")
+
+    def _read(self, *, deadline: float | None = None) -> dict[str, Any] | None:
+        assert self._proc.stdout is not None
+        self._wait_readable(deadline)
         line = self._proc.stdout.readline()
         if not line:
             return None
         if line.lower().startswith(b"content-length"):
             n = int(line.split(b":")[1])
             while True:
+                self._wait_readable(deadline)
                 blank = self._proc.stdout.readline()
                 if blank in (b"\r\n", b"\n", b""):
                     break
+            self._wait_readable(deadline)
             raw = self._proc.stdout.read(n)
             return json.loads(raw.decode())
         return json.loads(line.decode())
@@ -119,12 +151,19 @@ class AcpClient:
         *,
         on_update: Callable[[dict[str, Any]], None] | None = None,
         on_permission: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+        agent: str = "",
     ) -> dict[str, Any]:
         rid = self._next_id
         self._next_id += 1
+        deadline: float | None = None
+        if method in _HANDSHAKE_METHODS:
+            deadline = time.monotonic() + _handshake_timeout_sec()
         self._send({"jsonrpc": "2.0", "id": rid, "method": method, "params": params})
         while True:
-            msg = self._read()
+            try:
+                msg = self._read(deadline=deadline)
+            except TimeoutError as exc:
+                raise AuthRequired(agent) from exc
             if msg is None:
                 raise AcpError(f"EOF waiting for {method}")
             if msg.get("id") == rid and "result" in msg:
