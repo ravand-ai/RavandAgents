@@ -12,6 +12,12 @@ from typing import Any
 
 SessionStatus = str
 
+_START_BLOCKED = frozenset({"running", "ok", "done"})
+
+
+class FailClosed(Exception):
+    """Session store could not allow the action."""
+
 
 def _now_iso() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
@@ -117,6 +123,14 @@ class SessionStore:
         overflow_of: str | None = None,
         account: str | None = None,
     ) -> SessionRecord:
+        for path in self._sessions_dir().glob("*.json"):
+            existing = SessionRecord.from_json(
+                json.loads(path.read_text(encoding="utf-8"))
+            )
+            if existing.task_id == task_id and existing.status in _START_BLOCKED:
+                raise FailClosed(
+                    f"session for task {task_id!r} is {existing.status}"
+                )
         record = SessionRecord(
             id=str(uuid.uuid4()),
             task_id=task_id,
