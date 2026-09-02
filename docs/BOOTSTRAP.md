@@ -3,7 +3,7 @@
 Reading: [Docs map](README.md)
 
 Previous: [Security contract](SECURITY.md)
-Next: leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). SUCCESS [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed. Current feature milestone is v2-s1-bus. Do not grow TUI. Do not implement issue 51.
+Next: leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). First-ship checks: [#56](https://github.com/ravand-ai/RavandAgents/issues/56). Destination is [SUCCESS.md](SUCCESS.md) then [HLD.md](HLD.md) and [MODULAR.md](MODULAR.md). Do not grow TUI. Do not implement issue 51. Do not treat v0 as the end of the product.
 
 We use Grok Build, Kimi, and Cursor to implement Ravand. `ravand run` already works on this repo. Prefer `uv run ravand run -a grok|kimi|cursor --yes` over naked CLIs here ([REVIEW.md](REVIEW.md)). The contracts still bind every run: `harness.toml`, `AGENTS.md`, `docs/SECURITY.md`.
 

@@ -5,9 +5,9 @@ Reading: [Docs map](README.md)
 Previous: [How Ravand can succeed](SUCCESS.md)
 Next: [HLD](HLD.md)
 
-[SUCCESS.md](SUCCESS.md) still wins on **what we ship first**. This file is version order. Do not start v1 because the TUI is ugly.
+[SUCCESS.md](SUCCESS.md) still wins on **what we ship first**. [HLD.md](HLD.md) and [MODULAR.md](MODULAR.md) win on **what the product is**. This file is version order.
 
-The wedge is mixed seats under policy: `ravand which` / `ravand run` / audit. Grok already has a coding TUI. Ravand is the control plane, not a worse Grok.
+The destination is the full control plane: Hermes-class harness, Grok and other CLIs as backends, OpenClaw-class gateway, AgentField identity, orchestration. The first ship is mixed seats under policy: `ravand which` / `ravand run` / audit. Grok already has a coding TUI. Ravand is the control plane, not a worse Grok.
 
 ## Freeze: TUI
 
@@ -18,7 +18,7 @@ Four SUCCESS checks hold. [#56](https://github.com/ravand-ai/RavandAgents/issues
 1. Dogfood #9 through `ravand run` — **done** ([#9](https://github.com/ravand-ai/RavandAgents/issues/9) / PR [#60](https://github.com/ravand-ai/RavandAgents/pull/60))
 2. Two other trees + second human — **done** ([#56](https://github.com/ravand-ai/RavandAgents/issues/56))
 
-Do not grow TUI. [Issue #51](https://github.com/ravand-ai/RavandAgents/issues/51) (strip TUI junk) still waits. Scripts keep `ravand run --format jsonl`. Leftover CLI: [`ravand init`](https://github.com/ravand-ai/RavandAgents/issues/162). Current feature milestone: v2-s1-bus.
+Do not grow TUI. [Issue #51](https://github.com/ravand-ai/RavandAgents/issues/51) (strip TUI junk) still waits. Scripts keep `ravand run --format jsonl`. Leftover CLI: [`ravand init`](https://github.com/ravand-ai/RavandAgents/issues/162). First-ship gate is daily `ravand run`. Then follow v1–v4. Do not treat v0 as the end of the product.
 
 ## v0: one machine (shipped)
 
@@ -89,14 +89,19 @@ Exit: a second machine can take a task you did not start in a TTY.
 
 Exit: a company can ask “who ran what, under which seat, did tests pass.”
 
-## v4: channels and partners (not the product)
+## v4: gateway channels and identity
 
-Do not pull these forward to look busy.
+These are on the product. Do not pull them forward to look busy while v0-v3 exits are open.
 
-- Slack / OpenACP / other chat channels
-- InsForge as one MCP row
-- AgentField identity
-- GRC export (NIST / EU), not a GRC product
+**On the product**
+
+- Always-on gateway (OpenClaw-class): HTTP already in v2, then chat channels as trigger plugins (Slack, OpenACP, others)
+- AgentField identity: who may run, under which seat, with which grants
+- InsForge as one MCP row when a project needs it
+
+**Out (not the product)**
+
+- GRC export as a GRC product (a later export plugin is fine; we are not a DPIA suite)
 - Infra AIOps (disks, kube)
 - Plugin marketplace
 - Desktop / companion apps
@@ -112,7 +117,7 @@ Do not pull these forward to look busy.
 
 ## Positioning
 
-Ravand is a **modular agent control plane**. Subscription CLIs, native loops, and later cloud users share one policy.
+Ravand is a **modular agent control plane**. Subscription CLIs, native loops, gateway triggers, identity, and later cloud users share one policy.
 
 - Governance: runtime gates + evidence, not DPIAs
 - AIOps: queue/worker health, not cluster healing

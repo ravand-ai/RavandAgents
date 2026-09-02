@@ -291,8 +291,8 @@ These are not project options:
 
 ## v0 vs later
 
-v0 still ships the ACP + seat path: `ravand which`, `ravand run --format jsonl`, isolated HOMEs, permission ask, session, audit.
+v0 still ships the ACP + seat path: `ravand which`, `ravand run --format jsonl`, isolated HOMEs, permission ask, session, audit. That is the first ship, not the product.
 
-Skills, hooks, plugin host, memory (file store + scopes), plan mode, steer, ACP server: v1. Graph/Postgres memory stores, cron, HTTP SSE, webhooks, native loop, sandbox plugins, workflows, bus, cloud users, eval store: later.
+Skills, hooks, plugin host, memory (file store + scopes), plan mode, steer, ACP server: v1. Graph/Postgres memory stores, cron, HTTP SSE, webhooks, native loop, sandbox plugins, workflows, bus, gateway, identity, cloud users, eval store: later slices of the same product.
 
 Next: [Compared with OpenClaw, Hermes, Grok Build](COMPARE-PEERS.md)

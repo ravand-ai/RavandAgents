@@ -5,11 +5,19 @@ Reading: [Docs map](README.md)
 Previous: [HLD](HLD.md)
 Next: [Modular runtime](MODULAR.md)
 
-Status: accepted direction. Kernel is ours. Product seams are in [HLD.md](HLD.md) and [MODULAR.md](MODULAR.md).
+Status: accepted direction. Kernel is ours. Product seams are in [HLD.md](HLD.md) and [MODULAR.md](MODULAR.md). Destination is in [SUCCESS.md](SUCCESS.md).
+
+## Why we adopt this architecture
+
+Ravand must run many providers, many toolkits, and many plugins on one policy. Loop, tools, MCP, sandbox, bus, memory, trigger, workflow, and identity have to be swappable. A hard-wired coding agent cannot do that.
+
+Cordis is the published architecture for a plugin kernel: plugins mount into a shared context, `inject` waits for services, events intercept work, unload reverses effects. DeepSeek Harness is that kernel applied to a coding agent. We need the kernel shape. We do not need to become dsh.
+
+We write our own kernel. We do not add the Cordis package. We do not fork `deepseek-harness`. dsh stays one ACP backend in the registry.
 
 DeepSeek Harness (`dsh`) is DeepSeek's agent runtime. Cordis is the plugin kernel under it, and the architecture in the paper behind it.
 
-Ravand does **not** use Cordis as a dependency and does **not** run the Cordis package as its kernel. We write our own kernel. We take the Cordis architecture, then change it to fit Ravand: seats, named accounts, fail closed, modular loops and tools.
+Ravand does **not** use Cordis as a dependency and does **not** run the Cordis package as its kernel. We take the Cordis architecture, then change it to fit Ravand: seats, named accounts, fail closed, modular loops and tools.
 
 Loops, LLM keys, sandboxes, workflows, and MCP are product seams. They are not copied from the Cordis package. See [MODULAR.md](MODULAR.md).
 
@@ -44,7 +52,7 @@ dsh is MIT. It takes provider keys (`DEEPSEEK_API_KEY`). It owns tools and the t
 
 ## What Ravand is
 
-[HLD.md](HLD.md) and [MODULAR.md](MODULAR.md) say Ravand is a modular control plane: seats, named accounts, optional native loop, workflows, sandboxes. v0 still runs the ACP + seat path. dsh remains one ACP backend, not our architecture.
+[HLD.md](HLD.md) and [MODULAR.md](MODULAR.md) say Ravand is a modular control plane: seats, named accounts, optional native loop, workflows, sandboxes, gateway, identity. v0 still runs the ACP + seat path. That is the first ship, not the architecture. dsh remains one ACP backend.
 
 ## Kernel: take the architecture, write our own
 
@@ -118,21 +126,22 @@ When writing Ravand kernel plugins, say **preset** for the plugin tree. Say **pr
 ## Proposed shape
 
 ```
-Human / IDE / CI
+Human / IDE / CI / webhook / cron
         │
         ▼
-   ravand CLI          Ravand kernel (Cordis-shaped)
+   ravand Gateway      Ravand kernel (Cordis-shaped)
         │
   plugins (seams)
-    policy · profile HOME · accounts · registry
+    policy · profile HOME · accounts · registry · identity
     loop (ACP and/or native) · tools · MCP · sandbox
     permission · workflow · pipeline · session · audit
+    memory · cron · trigger · bus
         │
         ▼
  vendor CLI and/or native provider API (named accounts)
 ```
 
-v0 plugins: `policy`, `profile`, `registry`, `runtime`, `permissions`, `sessions`, `audit`, `cli`. Later plugins: accounts, loop, sandbox, workflow, pipeline, eval.
+v0 plugins: `policy`, `profile`, `registry`, `runtime`, `permissions`, `sessions`, `audit`, `cli`. Later plugins: accounts, loop, sandbox, workflow, pipeline, memory, trigger, identity, eval.
 
 `dsh --profile acp` remains one registry command for the ACP path.
 

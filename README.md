@@ -5,9 +5,9 @@ Reading: [docs map](docs/README.md)
 Previous: [docs map](docs/README.md)
 Next: [How Ravand can succeed](docs/SUCCESS.md), then [Roadmap](docs/ROADMAP.md)
 
-Ravand Agents is a modular control plane for coding agents. A project picks providers, accounts, loops, tools, MCP, sandbox, workflows, and pipelines.
+Ravand Agents is a modular agent control plane. The destination is a Hermes-class harness, Grok and other subscription CLIs as backends, an OpenClaw-class gateway, AgentField identity, and full orchestration. A project picks providers, accounts, loops, tools, MCP, sandbox, workflows, and pipelines. Some agents are personal. Some are work. Some start from CLI, webhook, or cron.
 
-v0 sits above subscription CLIs you already pay for (Claude Code, Grok Build, Kimi Code, Cursor Agent, DeepSeek Harness) over ACP. Later, a native loop may use named LLM accounts. Secrets never go in git. Policy fail-closes.
+v0 sits above subscription CLIs you already pay for (Claude Code, Grok Build, Kimi Code, Cursor Agent, DeepSeek Harness) over ACP. Later slices add the native loop, gateway, memory, workflows, and identity. Secrets never go in git. Policy fail-closes.
 
 ```
 you / IDE / CI / cloud user
