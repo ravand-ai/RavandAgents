@@ -80,11 +80,11 @@ class HumanQueue:
         self,
         root: Path,
         *,
-        monotonic: Callable[[], float] | None = None,
+        clock: Callable[[], float] | None = None,
         audit: AuditLog | None = None,
     ) -> None:
         self._root = root
-        self._monotonic = monotonic or time.monotonic
+        self._clock = clock or time.time
         self._audit = audit if audit is not None else AuditLog(root)
 
     def _dir(self) -> Path:
@@ -111,7 +111,11 @@ class HumanQueue:
         return HumanRequest.from_json(data)
 
     def _expired(self, item: HumanRequest) -> bool:
-        return self._monotonic() >= item.created_at + item.timeout_sec
+        now = self._clock()
+        # Wall clock can jump backwards (NTP). Fail closed: cannot prove still in window.
+        if now < item.created_at:
+            return True
+        return now >= item.created_at + item.timeout_sec
 
     def _audit_decision(self, item: HumanRequest, *, allowed: bool) -> None:
         event_type = f"{item.kind}.allow" if allowed else f"{item.kind}.deny"
@@ -168,7 +172,7 @@ class HumanQueue:
             detail=detail,
             approver=approver,
             timeout_sec=float(timeout_sec),
-            created_at=self._monotonic(),
+            created_at=self._clock(),
             status="pending",
             profile=profile,
             agent=agent,

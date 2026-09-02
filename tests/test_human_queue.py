@@ -29,7 +29,7 @@ class _Clock:
 def _queue(root: Path, clock: _Clock | None = None) -> HumanQueue:
     return HumanQueue(
         root,
-        monotonic=clock if clock is not None else _Clock(),
+        clock=clock if clock is not None else _Clock(),
         audit=AuditLog(root),
     )
 
@@ -117,6 +117,58 @@ def test_timeout_denies_plan_and_audits(tmp_path: Path) -> None:
     )
     clock.value = 5.0
     assert queue.wait(item.id) is False
+    assert "plan.deny" in _audit_types(tmp_path)
+    assert "plan.allow" not in _audit_types(tmp_path)
+
+
+def test_wall_clock_timeout_denies_across_queue_instances_permission(
+    tmp_path: Path,
+) -> None:
+    clock_a = _Clock()
+    clock_a.value = 10000.0
+    queue_a = _queue(tmp_path, clock_a)
+    item = queue_a.enqueue(
+        kind="permission",
+        task_id="task-wall-clock",
+        detail="read README.md",
+        approver="alice",
+        timeout_sec=10,
+        profile="work",
+        agent="grok",
+    )
+    clock_b = _Clock()
+    clock_b.value = 1.0
+    queue_b = _queue(tmp_path, clock_b)
+    assert queue_b.decide(item.id, actor="alice", allow=True) is False
+    data = json.loads(
+        (tmp_path / "human-queue" / f"{item.id}.json").read_text(encoding="utf-8")
+    )
+    assert data["status"] == "deny"
+    assert "permission.deny" in _audit_types(tmp_path)
+    assert "permission.allow" not in _audit_types(tmp_path)
+
+
+def test_wall_clock_timeout_denies_across_queue_instances_plan(tmp_path: Path) -> None:
+    clock_a = _Clock()
+    clock_a.value = 10000.0
+    queue_a = _queue(tmp_path, clock_a)
+    item = queue_a.enqueue(
+        kind="plan",
+        task_id="task-wall-clock-plan",
+        detail="edit files then test",
+        approver="alice",
+        timeout_sec=10,
+        profile="work",
+        agent="grok",
+    )
+    clock_b = _Clock()
+    clock_b.value = 1.0
+    queue_b = _queue(tmp_path, clock_b)
+    assert queue_b.decide(item.id, actor="alice", allow=True) is False
+    data = json.loads(
+        (tmp_path / "human-queue" / f"{item.id}.json").read_text(encoding="utf-8")
+    )
+    assert data["status"] == "deny"
     assert "plan.deny" in _audit_types(tmp_path)
     assert "plan.allow" not in _audit_types(tmp_path)
 
