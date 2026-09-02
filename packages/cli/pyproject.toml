@@ -4,6 +4,7 @@ version = "0.0.0"
 description = "ravand command-line interface"
 requires-python = ">=3.12"
 dependencies = [
+    "ravand-audit",
     "ravand-policy",
     "ravand-profile",
     "ravand-registry",

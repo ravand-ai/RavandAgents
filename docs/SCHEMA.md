@@ -163,6 +163,7 @@ type AuditEvent = {
     | "run.ended"
     | "agent.selected"
     | "agent.denied"
+    | "agent.paused"
     | "agent.overflow"
     | "permission.allow"
     | "permission.deny"
