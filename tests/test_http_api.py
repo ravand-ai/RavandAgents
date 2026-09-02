@@ -67,10 +67,17 @@ def _write_harness(
 
 
 @contextmanager
-def _api(home: Path) -> Iterator[tuple[str, Bus, SessionStore]]:
+def _api(
+    home: Path, *, workspace: Path
+) -> Iterator[tuple[str, Bus, SessionStore]]:
     bus = Bus()
     store = SessionStore(home)
-    server = HttpApiServer(("127.0.0.1", 0), bus=bus, store=store)
+    server = HttpApiServer(
+        ("127.0.0.1", 0),
+        bus=bus,
+        store=store,
+        workspace_roots=[workspace],
+    )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     host, port = server.server_address
@@ -117,7 +124,7 @@ def test_http_run_enqueues_and_streams_sse(
     home = tmp_path / "home"
     _write_harness(repo)
     monkeypatch.setenv("RAVAND_HOME", str(home))
-    with _api(home) as (url, bus, _store):
+    with _api(home, workspace=repo) as (url, bus, _store):
         status, body, ctype = _post(
             url,
             {
@@ -159,7 +166,7 @@ def test_denied_policy_does_not_enqueue(
     home = tmp_path / "home"
     _write_harness(repo, default="kimi", deny='["kimi"]')
     monkeypatch.setenv("RAVAND_HOME", str(home))
-    with _api(home) as (url, bus, _store):
+    with _api(home, workspace=repo) as (url, bus, _store):
         status, body, _ctype = _post(
             url,
             {
@@ -183,7 +190,7 @@ def test_secret_prompt_does_not_enqueue_or_leak(
     home = tmp_path / "home"
     _write_harness(repo)
     monkeypatch.setenv("RAVAND_HOME", str(home))
-    with _api(home) as (url, bus, _store):
+    with _api(home, workspace=repo) as (url, bus, _store):
         status, body, _ctype = _post(
             url,
             {
@@ -207,7 +214,7 @@ def test_unknown_agent_fails_closed(
     home = tmp_path / "home"
     _write_harness(repo)
     monkeypatch.setenv("RAVAND_HOME", str(home))
-    with _api(home) as (url, bus, _store):
+    with _api(home, workspace=repo) as (url, bus, _store):
         status, body, _ctype = _post(
             url,
             {
@@ -215,6 +222,31 @@ def test_unknown_agent_fails_closed(
                 "prompt": "unknown agent",
                 "agent": "no-such-agent",
                 "taskId": "task-unknown",
+            },
+        )
+    assert status != 200
+    for marker in FORBIDDEN:
+        assert marker not in body
+    assert bus.read(QUEUE_TASKS, visibility_timeout=600) is None
+    assert list((home / "sessions").glob("*.json")) == []
+
+
+def test_cwd_outside_workspace_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    outside = tmp_path / "other"
+    outside.mkdir()
+    _write_harness(repo)
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    with _api(home, workspace=repo) as (url, bus, _store):
+        status, body, _ctype = _post(
+            url,
+            {
+                "cwd": str(outside),
+                "prompt": "escape",
+                "taskId": "task-escape",
             },
         )
     assert status != 200

@@ -27,6 +27,19 @@ def _scrub(text: str) -> str:
     return text
 
 
+def _bound_cwd(raw: str, roots: tuple[Path, ...]) -> Path:
+    if not roots:
+        raise FailClosed("http api has no workspace root")
+    cwd = Path(raw).expanduser().resolve()
+    if not cwd.is_dir():
+        raise FailClosed("cwd is not a workspace")
+    for root in roots:
+        base = root.resolve()
+        if cwd == base or cwd.is_relative_to(base):
+            return cwd
+    raise FailClosed("cwd is outside workspace")
+
+
 class HttpApiServer(HTTPServer):
     """HTTP server that holds the bus and session store."""
 
@@ -36,9 +49,13 @@ class HttpApiServer(HTTPServer):
         *,
         bus: Bus,
         store: SessionStore,
+        workspace_roots: list[Path],
     ) -> None:
+        if not workspace_roots:
+            raise FailClosed("http api has no workspace root")
         self.bus = bus
         self.store = store
+        self.workspace_roots = tuple(Path(root) for root in workspace_roots)
         super().__init__(server_address, HttpApiHandler)
 
 
@@ -105,8 +122,9 @@ class HttpApiHandler(BaseHTTPRequestHandler):
             self._fail(403, "fail closed")
             return
         try:
+            cwd = _bound_cwd(cwd_raw, server.workspace_roots)
             record = dispatch(
-                Path(cwd_raw),
+                cwd,
                 prompt,
                 bus=server.bus,
                 store=server.store,
