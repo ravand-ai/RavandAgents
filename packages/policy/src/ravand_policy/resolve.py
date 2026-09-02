@@ -312,6 +312,8 @@ def resolve(
     if not isinstance(agents, dict):
         raise PolicyDenied("harness agents table is invalid")
 
+    if missing_harness:
+        raise UnknownAgent("no harness.toml; run `ravand init`")
     if profile_override and profile_override != repo_profile:
         raise PolicyDenied(
             f"profile override {profile_override!r} does not match repo {repo_profile!r}"
@@ -321,14 +323,10 @@ def resolve(
 
     agent = agent_override or default_agent
     if not agent:
-        if missing_harness:
-            raise UnknownAgent("no harness.toml; run `ravand init`")
         raise UnknownAgent("no default agent")
     if agent in deny:
         raise PolicyDenied(f"agent {agent!r} is denied")
     if agent not in agents:
-        if missing_harness:
-            raise UnknownAgent(f"unknown agent {agent!r}; run `ravand init`")
         raise UnknownAgent(f"unknown agent {agent!r}")
 
     profiles = user.get("profiles") or {}

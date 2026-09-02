@@ -114,3 +114,15 @@ def test_login_without_harness_tells_human_to_run_init(tmp_path: Path) -> None:
     result = run_ravand("login", cwd=repo, home=home)
     assert result.returncode != 0
     assert "ravand init" in combined_output(result)
+
+
+def test_login_work_without_harness_tells_human_to_run_init(tmp_path: Path) -> None:
+    repo = tmp_path / "empty"
+    repo.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
+    result = run_ravand("login", "work", cwd=repo, home=home)
+    assert result.returncode != 0
+    text = combined_output(result)
+    assert "ravand init" in text
+    assert "does not match repo" not in text
