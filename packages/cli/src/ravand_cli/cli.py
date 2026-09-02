@@ -17,6 +17,7 @@ from ravand_cli.status import run_status
 from ravand_cli.tui import run_tui
 from ravand_plugins import FailClosed as PluginFailClosed, PluginHost
 from ravand_runtime import audit_agent_denied, run_native_prompt, run_prompt, serve_acp, steer_prompt
+from ravand_runtime.http_api import DEFAULT_HTTP_PORT, serve_http
 from ravand_runtime.plan import plan_mode_active
 
 NOT_IMPLEMENTED = "not implemented"
@@ -93,6 +94,13 @@ def _parser() -> argparse.ArgumentParser:
     serve = sub.add_parser("serve", help="long-running services")
     serve_sub = serve.add_subparsers(dest="serve_command")
     serve_sub.add_parser("acp", help="stdio ACP server (agent ravand)")
+    http = serve_sub.add_parser("http", help="local SSE HTTP gateway")
+    http.add_argument(
+        "--port",
+        type=int,
+        default=DEFAULT_HTTP_PORT,
+        help=f"loopback port (default {DEFAULT_HTTP_PORT})",
+    )
     return parser
 
 
@@ -311,6 +319,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "serve":
         if args.serve_command == "acp":
             return serve_acp()
+        if args.serve_command == "http":
+            return serve_http(port=int(args.port))
         print(NOT_IMPLEMENTED, file=sys.stderr)
         return 2
     print(NOT_IMPLEMENTED, file=sys.stderr)

@@ -3,17 +3,28 @@
 from __future__ import annotations
 
 import json
+import sys
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 from ravand_bus import Bus, FailClosed as BusFailClosed
-from ravand_policy import FailClosed
+from ravand_policy import (
+    FailClosed,
+    PolicyDenied,
+    UnknownAgent,
+    ravand_home,
+    resolve,
+)
 from ravand_runtime.dispatch import dispatch
 from ravand_sessions import FailClosed as SessionFailClosed, SessionStore
 
 _FORBIDDEN = ("sk-", "xai-", "Bearer", "cookies")
+_LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+DEFAULT_HTTP_HOST = "127.0.0.1"
+DEFAULT_HTTP_PORT = 8765
 
 
 def _now_iso() -> str:
@@ -27,6 +38,11 @@ def _scrub(text: str) -> str:
     return text
 
 
+def _require_local(host: str) -> None:
+    if host not in _LOCAL_HOSTS:
+        raise FailClosed("http api is local-only")
+
+
 class HttpApiServer(HTTPServer):
     """HTTP server that holds the bus and session store."""
 
@@ -38,6 +54,10 @@ class HttpApiServer(HTTPServer):
         store: SessionStore,
         workspace_root: Path,
     ) -> None:
+        host, port = server_address
+        _require_local(host)
+        if not isinstance(port, int) or port < 0 or port > 65535:
+            raise FailClosed("http api port is invalid")
         root = Path(workspace_root).resolve()
         if not root.is_dir():
             raise FailClosed("http api has no workspace root")
@@ -143,3 +163,43 @@ class HttpApiHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
+
+
+def serve_http(
+    *,
+    port: int = DEFAULT_HTTP_PORT,
+    workspace_root: Path | None = None,
+    bus: Bus | None = None,
+    store: SessionStore | None = None,
+    on_listen: Callable[[HttpApiServer], None] | None = None,
+) -> int:
+    """Bind 127.0.0.1 and serve POST /run as SSE until shutdown.
+
+    Fail closed if Policy cannot resolve the workspace. Local-only; no cloud users.
+    """
+    root = Path(workspace_root) if workspace_root is not None else Path.cwd()
+    root = root.resolve()
+    try:
+        resolve(root)
+    except (FailClosed, PolicyDenied, UnknownAgent) as exc:
+        print(_scrub(str(exc)), file=sys.stderr)
+        return getattr(exc, "exit_code", 3)
+    try:
+        actual_bus = bus if bus is not None else Bus()
+        actual_store = store if store is not None else SessionStore(ravand_home())
+        server = HttpApiServer(
+            (DEFAULT_HTTP_HOST, port),
+            bus=actual_bus,
+            store=actual_store,
+            workspace_root=root,
+        )
+    except (FailClosed, BusFailClosed, SessionFailClosed, OSError) as exc:
+        print(_scrub(str(exc)), file=sys.stderr)
+        return 3
+    if on_listen is not None:
+        on_listen(server)
+    try:
+        server.serve_forever()
+    finally:
+        server.server_close()
+    return 0
