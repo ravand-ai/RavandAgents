@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import tomllib
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -127,7 +128,10 @@ def verify_webhook_signature(
     provided = signature.strip()
     if "=" not in provided:
         provided = f"sha256={provided}"
-    return hmac.compare_digest(provided, expected)
+    try:
+        return hmac.compare_digest(provided, expected)
+    except (TypeError, ValueError):
+        return False
 
 
 def _load_secret(secret_ref: str, *, home: Path) -> bytes:
@@ -141,7 +145,7 @@ def _load_secret(secret_ref: str, *, home: Path) -> bytes:
         raise PolicyDenied("secret_ref path escaped") from exc
     if not path.is_file() or path.stat().st_size == 0:
         raise PolicyDenied("secret_ref is missing")
-    return path.read_bytes()
+    return path.read_bytes().strip()
 
 
 def _deny(
@@ -223,7 +227,7 @@ def handle_webhook(
     if bus is not None:
         if store is None:
             raise PolicyDenied("webhook dispatch requires a session store")
-        task_id = trigger.id or trigger.path
+        task_id = str(uuid.uuid4())
         try:
             dispatch(
                 cwd,

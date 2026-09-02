@@ -317,6 +317,44 @@ def test_good_signature_dispatches_after_policy(
     assert SECRET.decode() not in blob
 
 
+def test_second_valid_signature_enqueues_second_task(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    home.mkdir()
+    _write_harness(repo, extra=_webhook_extra())
+    _write_vault_secret(home, SECRET_REF, SECRET.decode() + "\n")
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    bus = Bus()
+    store = SessionStore(home)
+    body = b'{"ok":true}'
+    handle_webhook(
+        repo,
+        path="/hooks/deploy",
+        body=body,
+        signature=_sig(body),
+        bus=bus,
+        store=store,
+        audit=AuditLog(home),
+    )
+    handle_webhook(
+        repo,
+        path="/hooks/deploy",
+        body=body,
+        signature=_sig(body),
+        bus=bus,
+        store=store,
+        audit=AuditLog(home),
+    )
+    first = bus.read(QUEUE_TASKS, visibility_timeout=600)
+    second = bus.read(QUEUE_TASKS, visibility_timeout=600)
+    assert first is not None
+    assert second is not None
+    assert first.task_id != second.task_id
+    assert bus.read(QUEUE_TASKS, visibility_timeout=600) is None
+
+
 def test_denied_policy_does_not_dispatch(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
