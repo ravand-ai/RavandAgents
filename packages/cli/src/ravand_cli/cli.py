@@ -20,6 +20,7 @@ from ravand_runtime import audit_agent_denied, run_native_prompt, run_prompt, se
 from ravand_runtime.cron import serve_cron
 from ravand_runtime.http_api import DEFAULT_HTTP_PORT, serve_http
 from ravand_runtime.plan import plan_mode_active
+from ravand_runtime.serve import serve_all
 from ravand_runtime.worker import serve_worker
 
 NOT_IMPLEMENTED = "not implemented"
@@ -93,7 +94,20 @@ def _parser() -> argparse.ArgumentParser:
     plugin_add = plugin_sub.add_parser("add", help="install a plugin from a path")
     plugin_add.add_argument("source", type=Path)
     plugin_sub.add_parser("list", help="list installed plugins")
-    serve = sub.add_parser("serve", help="long-running services")
+    serve = sub.add_parser(
+        "serve",
+        help="http + cron + worker on one bus",
+        description=(
+            "With no subcommand, start http, cron, and worker on one Bus "
+            "so webhook and cron enqueue is visible to the worker."
+        ),
+    )
+    serve.add_argument(
+        "--port",
+        type=int,
+        default=DEFAULT_HTTP_PORT,
+        help=f"loopback port for http (default {DEFAULT_HTTP_PORT})",
+    )
     serve_sub = serve.add_subparsers(dest="serve_command")
     serve_sub.add_parser("acp", help="stdio ACP server (agent ravand)")
     http = serve_sub.add_parser("http", help="local SSE HTTP gateway")
@@ -329,6 +343,8 @@ def main(argv: list[str] | None = None) -> int:
             return serve_cron()
         if args.serve_command == "worker":
             return serve_worker()
+        if args.serve_command is None:
+            return serve_all(port=int(args.port))
         print(NOT_IMPLEMENTED, file=sys.stderr)
         return 2
     print(NOT_IMPLEMENTED, file=sys.stderr)
