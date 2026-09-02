@@ -11,6 +11,7 @@ from ravand_policy import FailClosed, PolicyDenied, UnknownAgent, resolve
 from ravand_profile import ensure_profile_home
 from ravand_registry import login_hint
 from ravand_cli.ask import confirm_permission, confirm_plan, should_ask
+from ravand_cli.pause import require_not_paused, set_pause
 from ravand_cli.status import run_status
 from ravand_cli.tui import run_tui
 from ravand_plugins import FailClosed as PluginFailClosed, PluginHost
@@ -51,6 +52,12 @@ def _parser() -> argparse.ArgumentParser:
     )
     login = sub.add_parser("login", help="print vendor login hints")
     login.add_argument("profile", nargs="?", default=None)
+    pause = sub.add_parser(
+        "pause",
+        help="fail-close new runs for an agent+profile pair",
+    )
+    pause.add_argument("--agent", required=True, dest="pause_agent")
+    pause.add_argument("--profile", required=True, dest="pause_profile")
     sub.add_parser("status", help="login doctor")
     sub.add_parser("tui", help="operator screen (TTY)")
     steer = sub.add_parser("steer", help="continue a live session")
@@ -134,6 +141,12 @@ def _run(args: argparse.Namespace) -> int:
         print(str(exc), file=sys.stderr)
         return exc.exit_code
     except FailClosed as exc:
+        audit_agent_denied(str(exc), cwd=Path.cwd())
+        print(str(exc), file=sys.stderr)
+        return exc.exit_code
+    try:
+        require_not_paused(policy.agent, policy.profile)
+    except PolicyDenied as exc:
         audit_agent_denied(str(exc), cwd=Path.cwd())
         print(str(exc), file=sys.stderr)
         return exc.exit_code
@@ -222,6 +235,15 @@ def _login(args: argparse.Namespace) -> int:
     return 0
 
 
+def _pause(args: argparse.Namespace) -> int:
+    try:
+        set_pause(args.pause_agent, args.pause_profile)
+    except PolicyDenied as exc:
+        print(str(exc), file=sys.stderr)
+        return exc.exit_code
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
@@ -234,6 +256,8 @@ def main(argv: list[str] | None = None) -> int:
         return _which(args)
     if args.command == "login":
         return _login(args)
+    if args.command == "pause":
+        return _pause(args)
     if args.command == "run":
         return _run(args)
     if args.command == "steer":

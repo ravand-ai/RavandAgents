@@ -203,6 +203,7 @@ name = "ravand-cli"
 version = "0.0.0"
 source = { editable = "packages/cli" }
 dependencies = [
+    { name = "ravand-audit" },
     { name = "ravand-plugins" },
     { name = "ravand-policy" },
     { name = "ravand-profile" },
@@ -213,6 +214,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ravand-audit", editable = "packages/audit" },
     { name = "ravand-plugins", editable = "packages/plugins" },
     { name = "ravand-policy", editable = "packages/policy" },
     { name = "ravand-profile", editable = "packages/profile" },
