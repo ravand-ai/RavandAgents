@@ -84,6 +84,35 @@ def test_run_streams_jsonl_without_secrets(tmp_path: Path) -> None:
     assert any(e.get("tool") == "Read AGENTS.md" for e in events)
 
 
+def test_run_format_text_prints_turns_not_json(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    _harness(repo)
+    env = os.environ.copy()
+    env["RAVAND_HOME"] = str(home)
+    result = subprocess.run(
+        ["uv", "run", "ravand", "run", "--format", "text", "--yes", "say hi"],
+        cwd=repo,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    out = result.stdout
+    assert "hello-from-fake" in out
+    assert "run started" in out
+    assert "run ended" in out
+    for line in out.splitlines():
+        stripped = line.strip()
+        if stripped:
+            assert not stripped.startswith("{"), stripped
+    blob = out + result.stderr
+    assert "sk-" not in blob
+    assert "xai-" not in blob
+    assert "Bearer" not in blob
+
+
 def test_session_update_list_content_after_permission_does_not_crash(
     tmp_path: Path,
 ) -> None:
