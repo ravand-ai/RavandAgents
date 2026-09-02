@@ -2,7 +2,9 @@
 name = "ravand-bus"
 version = "0.0.0"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "psycopg>=3",
+]
 
 [build-system]
 requires = ["uv_build>=0.11.8,<0.12.0"]
