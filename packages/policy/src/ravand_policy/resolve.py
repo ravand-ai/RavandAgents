@@ -277,8 +277,9 @@ def resolve(
     harness_path = cwd / "harness.toml"
     home_root = ravand_home()
     user = _user_config(home_root)
+    missing_harness = not harness_path.is_file()
 
-    if harness_path.is_file():
+    if not missing_harness:
         harness = _load_toml(harness_path)
     else:
         default_profile = user.get("default_profile", "personal")
@@ -311,6 +312,8 @@ def resolve(
     if not isinstance(agents, dict):
         raise PolicyDenied("harness agents table is invalid")
 
+    if missing_harness:
+        raise UnknownAgent("no harness.toml; run `ravand init`")
     if profile_override and profile_override != repo_profile:
         raise PolicyDenied(
             f"profile override {profile_override!r} does not match repo {repo_profile!r}"

@@ -8,7 +8,7 @@ import subprocess
 import tomllib
 from pathlib import Path
 
-from ravand_policy import PolicyDenied, resolve
+from ravand_policy import PolicyDenied, UnknownAgent, resolve
 from ravand_profile import ensure_profile_home
 
 # Relative to profile HOME. Stat only; never open for read.
@@ -111,6 +111,8 @@ def header_text(cwd: Path) -> str:
         policy = resolve(cwd)
     except PolicyDenied as exc:
         return f"denied: {exc}"
+    except UnknownAgent as exc:
+        return str(exc)
     ensure_profile_home(policy.home)
     parts = [
         f"profile {policy.profile}",
@@ -150,6 +152,9 @@ def run_status(cwd: Path) -> int:
         print("denied")
         print(str(exc))
         return 0
+    except UnknownAgent as exc:
+        print(str(exc))
+        return exc.exit_code
 
     ensure_profile_home(policy.home)
     profile_home = Path(policy.home)

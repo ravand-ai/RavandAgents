@@ -1,0 +1,22 @@
+# Reading: docs/README.md
+# Previous: docs/GOVERNANCE.md
+# Next: examples/policy.user.toml, then AGENTS.md
+
+profile = "work"
+default = "grok"
+overflow = "kimi"
+deny = []
+permissions = "repo-only"
+classification = "internal"
+
+[agents.grok]
+command = ["grok", "agent", "stdio"]
+
+[agents.kimi]
+command = ["kimi", "acp"]
+
+[agents.claude]
+command = ["npx", "-y", "@agentclientprotocol/claude-agent-acp"]
+
+[agents.cursor]
+command = ["cursor-agent", "acp"]

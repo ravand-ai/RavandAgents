@@ -20,9 +20,21 @@ from ravand_runtime.plan import plan_mode_active
 NOT_IMPLEMENTED = "not implemented"
 
 
+def _harness_template() -> str:
+    bundled = Path(__file__).resolve().parent / "harness.toml"
+    if bundled.is_file():
+        return bundled.read_text(encoding="utf-8")
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "examples" / "harness.toml"
+        if candidate.is_file():
+            return candidate.read_text(encoding="utf-8")
+    raise FileNotFoundError("harness.toml template is missing")
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ravand")
     sub = parser.add_subparsers(dest="command")
+    sub.add_parser("init", help="write ./harness.toml")
     which = sub.add_parser("which", help="resolve agent and profile for cwd")
     which.add_argument("--profile", dest="profile_override")
     which.add_argument("-a", "--agent", dest="agent_override")
@@ -53,6 +65,15 @@ def _parser() -> argparse.ArgumentParser:
     serve_sub = serve.add_subparsers(dest="serve_command")
     serve_sub.add_parser("acp", help="stdio ACP server (agent ravand)")
     return parser
+
+
+def _init() -> int:
+    dest = Path.cwd() / "harness.toml"
+    if dest.exists():
+        print("harness.toml already exists; refusing to overwrite", file=sys.stderr)
+        return 3
+    dest.write_text(_harness_template(), encoding="utf-8")
+    return 0
 
 
 def _which(args: argparse.Namespace) -> int:
@@ -200,6 +221,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command is None:
         parser.print_help()
         return 0
+    if args.command == "init":
+        return _init()
     if args.command == "which":
         return _which(args)
     if args.command == "login":
