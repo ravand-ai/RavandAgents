@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,56 @@ import pytest
 from ravand_policy import PolicyDenied, resolve
 
 ROOT = Path(__file__).resolve().parents[1]
+
+CANONICAL_GROK_WORK = {"kind": "cli", "agent": "grok"}
+CANONICAL_CLAUDE_API = {
+    "kind": "api",
+    "provider": "anthropic",
+    "secret_ref": "vault:work/claude-api",
+}
+FORBIDDEN_SECRET_MARKERS = ("sk-", "xai-", "Bearer")
+
+
+def _example_user_policy_text() -> str:
+    return (ROOT / "examples" / "policy.user.toml").read_text(encoding="utf-8")
+
+
+def _schema_user_config_toml() -> str:
+    schema = (ROOT / "docs" / "SCHEMA.md").read_text(encoding="utf-8")
+    heading = "## ~/.ravand/config.toml (user)"
+    rest = schema[schema.index(heading) :]
+    start = rest.index("```toml")
+    end = rest.index("```", start + len("```toml"))
+    return rest[start + len("```toml") : end]
+
+
+def test_example_user_policy_declares_canonical_named_accounts() -> None:
+    text = _example_user_policy_text()
+    data = tomllib.loads(text)
+    accounts = data["accounts"]
+    assert accounts["grok-work"] == CANONICAL_GROK_WORK
+    claude = accounts["claude-api"]
+    assert claude == CANONICAL_CLAUDE_API
+    assert "key" not in claude
+    assert "secret" not in claude
+    for marker in FORBIDDEN_SECRET_MARKERS:
+        assert marker not in text
+
+
+def test_schema_copies_canonical_named_accounts_sample() -> None:
+    schema = (ROOT / "docs" / "SCHEMA.md").read_text(encoding="utf-8")
+    assert "Named accounts later" not in schema
+    sample = tomllib.loads(_schema_user_config_toml())
+    example = tomllib.loads(_example_user_policy_text())
+    assert sample["accounts"]["grok-work"] == example["accounts"]["grok-work"]
+    assert sample["accounts"]["claude-api"] == example["accounts"]["claude-api"]
+    assert sample["accounts"]["grok-work"] == CANONICAL_GROK_WORK
+    assert sample["accounts"]["claude-api"] == CANONICAL_CLAUDE_API
+    claude = sample["accounts"]["claude-api"]
+    assert "key" not in claude
+    assert "secret" not in claude
+    for marker in FORBIDDEN_SECRET_MARKERS:
+        assert marker not in _schema_user_config_toml()
 
 
 def _write_harness(

@@ -95,14 +95,15 @@ allow = ["claude", "grok", "cursor"]
 home = "~/.ravand/profiles/personal"
 allow = ["kimi", "grok", "opencode", "dsh"]
 
-# Named accounts later. Id is local to the profile. kind is cli | api.
-# [accounts.grok-work]
-# kind = "cli"
-# agent = "grok"
-# [accounts.claude-api]
-# kind = "api"
-# provider = "anthropic"
-# secret_ref = "vault:work/claude-api"
+# Id is local to the profile. kind is cli | api. API keys stay in the vault.
+[accounts.grok-work]
+kind = "cli"
+agent = "grok"
+
+[accounts.claude-api]
+kind = "api"
+provider = "anthropic"
+secret_ref = "vault:work/claude-api"
 ```
 
 ## ResolvedPolicy (internal)
