@@ -6,7 +6,9 @@ import threading
 from collections.abc import Callable
 from pathlib import Path
 
+from ravand_audit import AuditLog
 from ravand_bus import TaskMessage
+from ravand_policy import ravand_home
 
 QUEUE_TASKS = "q.tasks"
 _VISIBILITY_TIMEOUT = 600
@@ -26,10 +28,16 @@ class Worker:
         *,
         run: Callable[[TaskMessage], int],
         heartbeat_interval: float = _HEARTBEAT_INTERVAL,
+        auth_ok: bool = True,
+        allowed_agents: frozenset[str] | None = None,
+        audit: AuditLog | None = None,
     ) -> None:
         self._bus = bus
         self._run = run
         self._heartbeat_interval = heartbeat_interval
+        self._auth_ok = auth_ok
+        self._allowed_agents = allowed_agents
+        self._audit = audit
 
     def run_once(self) -> bool:
         message = self._bus.read(
@@ -37,6 +45,20 @@ class Worker:
         )
         if message is None:
             return False
+        if not self._auth_ok or (
+            self._allowed_agents is not None
+            and message.agent not in self._allowed_agents
+        ):
+            log = self._audit if self._audit is not None else AuditLog(ravand_home())
+            log.emit(
+                "worker.capability_miss",
+                task_id=message.task_id,
+                profile=message.profile,
+                agent=message.agent,
+                cwd=message.cwd_hint,
+            )
+            self._bus.ack(message, success=False)
+            return True
         if not Path(message.cwd_hint).is_dir():
             raise FailClosed("workspace missing")
         stop = threading.Event()
