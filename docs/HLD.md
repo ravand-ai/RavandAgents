@@ -12,7 +12,7 @@ I/O with agents: ACP v1 stdio and/or a native loop, both behind policy.
 
 ## Context
 
-Ravand Agents is a modular control plane and runtime. A project picks providers, accounts, loops, tools, MCP, sandbox, workflows, and pipelines. People hold mixed seats and mixed API keys. Policy says which of those may touch this repo.
+Ravand Agents is a modular control plane and runtime. Destination: Hermes-class harness, subscription CLIs as backends, OpenClaw-class gateway, AgentField identity, orchestration. A project picks providers, accounts, loops, tools, MCP, sandbox, workflows, and pipelines. People hold mixed seats and mixed API keys. Policy says which of those may touch this repo.
 
 ```
 Human / IDE / CI / cloud user

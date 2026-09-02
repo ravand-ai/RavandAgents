@@ -5,9 +5,22 @@ Reading: [Docs map](README.md)
 Previous: [Modular runtime](MODULAR.md)
 Next: [Schema](SCHEMA.md)
 
-This file is a gap list. It does not add services. HLD and MODULAR stay the product law.
+This file is a gap list. It does not add services. HLD and MODULAR stay the product law. SUCCESS wins on ship order.
 
-"Grok bot" here means **Grok Build** (`grok`), xAI's coding agent, not the Grok chatbot on X. OpenClaw and Hermes are the other two runtimes people actually run.
+## Why we compare
+
+Ravand's destination is the next generation of these products on one kernel, not a smaller v0 CLI.
+
+| We take from | As |
+|--------------|----|
+| **Hermes Agent** | Open harness: loop, tools, memory, cron, sandbox, ACP server, HTTP |
+| **Grok Build** | Coding agent we spawn over ACP (plan, skills, MCP, subagents). We do not rebuild its TUI |
+| **OpenClaw** | Always-on gateway, channels as trigger plugins, control surface |
+| **AgentField** | Identity: who may run, under which seat |
+
+We compare so those rows stay on the product. A P in the matrix is designed work, sequenced by [ROADMAP.md](ROADMAP.md). An N stays out unless HLD names it.
+
+"Grok bot" here means **Grok Build** (`grok`), xAI's coding agent, not the Grok chatbot on X. OpenClaw and Hermes are the other two runtimes people actually run. AgentField is identity, not a fourth coding TUI.
 
 ## What each product is
 
@@ -16,9 +29,10 @@ This file is a gap list. It does not add services. HLD and MODULAR stay the prod
 | **OpenClaw** | Personal or small-team assistant gateway. Models + tools + **messaging channels** + optional coding harnesses | WhatsApp, Telegram, Slack, Discord, Signal, iMessage, Control UI, CLI, ACP |
 | **Hermes Agent** (Nous Research) | Full open-source **agent harness**: loop, tools, memory, cron, sandbox, ACP server | TUI, `hermes acp`, HTTP+SSE API, some chat adapters |
 | **Grok Build** | Vendor **coding agent**: TUI, plan, subagents, skills, MCP, ACP | `grok`, `grok -p`, `grok agent stdio` |
-| **Ravand Agents** | **Control plane** over those (and a native loop later). Seats, accounts, policy, bus, workflows | `ravand` CLI first. HTTP/webhooks later |
+| **AgentField** | Agent **identity** (who may run, grants) | partner identity, not a coding TUI |
+| **Ravand Agents** | **Control plane + harness + gateway**: seats, accounts, policy, loops, tools, plugins, bus, workflows, identity | `ravand` CLI first. HTTP, webhooks, channels later |
 
-Ravand is not trying to replace Grok's TUI or become another WhatsApp bot. Gaps below are still real if we want a complete operator product.
+Ravand does not replace Grok's TUI and does not start as a WhatsApp bot. The gaps below are the destination. Close them in ROADMAP order.
 
 ## Feature matrix
 
@@ -59,7 +73,7 @@ Y = they ship it now. P = we designed it (often later than v0). N = we have not 
 
 ### Designed now (was a gap)
 
-Skills, hooks, classified memory, cron, plan mode, steer, SessionEvent JSONL/SSE, and ACP server (v1) are in HLD, MODULAR, and SCHEMA. Still not implemented in code.
+Skills, hooks, classified memory, cron, plan mode, steer, SessionEvent JSONL/SSE, ACP server (v1), gateway, and AgentField identity are in HLD, MODULAR, and SCHEMA. Still not all implemented in code. Close them in ROADMAP order.
 
 ### Missing on purpose unless we change the product
 
@@ -105,7 +119,7 @@ Hermes is the closest "open loop + ACP + API" stack. Gaps if our native loop is 
 
 ## Follow-ups (now in HLD / MODULAR / SCHEMA)
 
-Skills, hooks, classified memory, cron, plan mode, steer, and SessionEvent JSONL/SSE are product law. ACP server stays v1. Channels and a TUI stay out.
+Skills, hooks, classified memory, cron, plan mode, steer, and SessionEvent JSONL/SSE are product law. ACP server stays v1. Channels and identity ship in v4. A coding TUI stays out.
 
 Update the matrix: those rows are **P** (designed), not N.
 

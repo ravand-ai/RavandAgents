@@ -3,7 +3,7 @@
 Reading: [docs map](docs/README.md)
 
 Previous: [Governance](docs/GOVERNANCE.md) and the example tomls
-Next: leftover CLI is [`ravand init`](https://github.com/ravand-ai/RavandAgents/issues/162). SUCCESS [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed. Four SUCCESS checks hold. Do not grow TUI ([#51](https://github.com/ravand-ai/RavandAgents/issues/51)). Current feature milestone is [v2-s1-bus](https://github.com/ravand-ai/RavandAgents/milestone/6). Sprints are **milestones**, not labels.
+Next: destination is [docs/SUCCESS.md](docs/SUCCESS.md) then [docs/HLD.md](docs/HLD.md) and [docs/MODULAR.md](docs/MODULAR.md). First-ship leftover CLI is [`ravand init`](https://github.com/ravand-ai/RavandAgents/issues/162). Do not grow TUI ([#51](https://github.com/ravand-ai/RavandAgents/issues/51)). Do not treat v0 as the end of the product. Sprints are **milestones**, not labels.
 
 This file has two parts. Stack, verify, and branches are for the task protocol. "Adopted product rules" is the implement contract. Skip to that heading if you are reading the design.
 
@@ -163,7 +163,7 @@ A sprint finishes when the current milestone has **zero** open issues. Then do t
 Do not start the next sprint's builders before the retro comment exists. Do not treat a finished sprint as a reason to rewrite docs. The next action is the next feature.
 ## Adopted product rules
 
-You are implementing Ravand Agents, a modular agent control plane. v0 is local ACP over subscription CLIs. Later slices add named LLM accounts, a native loop, sandboxes, workflows, and cloud users.
+You are implementing Ravand Agents, a modular agent control plane. Destination: Hermes-class harness, subscription CLIs as backends, OpenClaw-class gateway, AgentField identity, orchestration. v0 is local ACP over subscription CLIs (the first ship). Later slices add named LLM accounts, a native loop, sandboxes, workflows, gateway, identity, and cloud users. Do not treat v0 as the end of the product.
 
 Read this file before writing code. Follow it over conversational memory.
 
@@ -200,7 +200,7 @@ v0 is **one process**. Do not stand up a bus or Postgres until v2 flags exist.
 
 ### Implementation order (do not skip)
 
-Leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). SUCCESS [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed. Current feature milestone is v2-s1-bus. One GitHub issue per branch. TDD: write the failing pytest first, then the code. Do not grow TUI. Do not implement issue 51.
+Leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). First-ship checks: [#56](https://github.com/ravand-ai/RavandAgents/issues/56). Destination is [docs/SUCCESS.md](docs/SUCCESS.md) then HLD and MODULAR. One GitHub issue per branch. TDD: write the failing pytest first, then the code. Do not grow TUI. Do not implement issue 51. Do not treat v0 as the end of the product.
 
 #### Slice 0: skeleton
 
