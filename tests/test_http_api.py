@@ -1,8 +1,10 @@
-"""HTTP API: Policy then dispatch, SSE SessionEvent (GitHub issue #137)."""
+"""HTTP API + ravand serve http SSE gateway (GitHub issues #137, #206)."""
 
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 import threading
 import urllib.error
 import urllib.request
@@ -13,9 +15,10 @@ from pathlib import Path
 import pytest
 
 from ravand_bus import Bus
-from ravand_runtime.http_api import HttpApiServer
+from ravand_runtime.http_api import DEFAULT_HTTP_PORT, HttpApiServer, serve_http
 from ravand_sessions import SessionStore
 
+ROOT = Path(__file__).resolve().parents[1]
 QUEUE_TASKS = "q.tasks"
 FORBIDDEN = ("sk-", "xai-", "Bearer", "cookies")
 SESSION_EVENT_TYPES = frozenset(
@@ -254,3 +257,136 @@ def test_payload_cwd_is_ignored(
     assert got is not None
     assert got.cwd_hint == str(repo.resolve())
     assert got.cwd_hint != str(outside.resolve())
+
+
+def _ravand(*args: str, cwd: Path | None = None, env: dict | None = None) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["uv", "run", "ravand", *args],
+        cwd=cwd or ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+        timeout=15,
+    )
+
+
+def test_serve_http_help_exists() -> None:
+    result = _ravand("serve", "http", "--help")
+    assert result.returncode == 0, result.stderr
+    combined = (result.stdout + result.stderr).lower()
+    assert "usage" in combined
+    assert "--port" in combined
+    assert str(DEFAULT_HTTP_PORT) in combined
+
+
+def test_serve_http_rejects_non_local_bind(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    _write_harness(repo)
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    with pytest.raises(Exception) as excinfo:
+        HttpApiServer(
+            ("0.0.0.0", 0),
+            bus=Bus(),
+            store=SessionStore(home),
+            workspace_root=repo,
+        )
+    blob = str(excinfo.value).lower()
+    assert "local" in blob or "fail closed" in blob
+    for marker in FORBIDDEN:
+        assert marker not in blob
+
+
+def test_serve_http_entry_binds_loopback_and_streams(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    _write_harness(repo)
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    bus = Bus()
+    store = SessionStore(home)
+    ready = threading.Event()
+    holder: dict[str, HttpApiServer] = {}
+    errors: list[BaseException] = []
+
+    def on_listen(server: HttpApiServer) -> None:
+        holder["server"] = server
+        ready.set()
+
+    def _run() -> None:
+        try:
+            code = serve_http(
+                port=0,
+                workspace_root=repo,
+                bus=bus,
+                store=store,
+                on_listen=on_listen,
+            )
+            if code != 0:
+                errors.append(RuntimeError(f"serve_http exited {code}"))
+        except BaseException as exc:  # noqa: BLE001 — capture for assert
+            errors.append(exc)
+
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()
+    assert ready.wait(timeout=5), errors
+    assert not errors, errors
+    server = holder["server"]
+    host, bound = server.server_address
+    assert host == "127.0.0.1"
+    assert isinstance(bound, int) and bound > 0
+    try:
+        status, body, ctype = _post(
+            f"http://{host}:{bound}/run",
+            {
+                "cwd": str(repo),
+                "prompt": "serve http gateway",
+                "taskId": "serve-1",
+            },
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+    assert status == 200, body
+    assert "text/event-stream" in ctype
+    events = _sse_events(body)
+    assert any(event["type"] == "run.started" for event in events)
+    for event in events:
+        assert event["type"] in SESSION_EVENT_TYPES
+        assert event["taskId"] == "serve-1"
+    for marker in FORBIDDEN:
+        assert marker not in body
+    got = bus.read(QUEUE_TASKS, visibility_timeout=600)
+    assert got is not None
+    assert got.task_id == "serve-1"
+    assert got.cwd_hint == str(repo.resolve())
+
+
+def test_serve_http_fails_closed_when_policy_unresolved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    home = tmp_path / "home"
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    code = serve_http(port=0, workspace_root=empty)
+    assert code != 0
+    assert list((home / "sessions").glob("*.json")) == []
+
+
+def test_cli_serve_http_fail_closed_without_harness(tmp_path: Path) -> None:
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    home = tmp_path / "home"
+    env = dict(os.environ)
+    env["RAVAND_HOME"] = str(home)
+    result = _ravand("serve", "http", "--port", "0", cwd=empty, env=env)
+    assert result.returncode != 0
+    blob = (result.stdout + result.stderr).lower()
+    for marker in FORBIDDEN:
+        assert marker not in blob
