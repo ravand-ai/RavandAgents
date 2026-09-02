@@ -169,6 +169,7 @@ type AuditEvent = {
     | "auth.missing"
     | "profile.mismatch"
     | "worker.capability_miss"
+    | "worker.cordoned"
     | "trigger.denied"
     | "plan.allow"
     | "plan.deny"
