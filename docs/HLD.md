@@ -180,8 +180,10 @@ One process per machine that already has the allowed accounts.
 1. `Bus.read('q.tasks')` with visibility timeout (PGMQ `vt=600` or Kafka equivalent)
 2. Heartbeat while the run is live
 3. if `Profile.AuthOK` false → fast nack `capability_miss`
-4. run Runtime on local worktree
-5. archive or ack on terminal state
+4. if cordoned → fast nack `worker.cordoned` (no run)
+5. run Runtime on local worktree
+6. archive or ack on terminal state
+7. drain: finish in-flight, then stop (no new reads)
 
 Workspace must exist on the worker. Queue does not ship git.
 
