@@ -58,7 +58,7 @@ Dogfood on this repo and two real work repos. Success is not a complete HLD. Suc
 - One other human can install, login a profile, and run a task without a call.
 - Audit can answer "which account touched this tree yesterday."
 
-Until those four are true, do not start native loop, bus, or cloud.
+Those four hold ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) closed). Leftover CLI is [`ravand init`](https://github.com/ravand-ai/RavandAgents/issues/162). Current feature milestone is v2-s1-bus. Do not grow TUI.
 
 ## What would kill it
 
@@ -74,7 +74,7 @@ BSL with a $250k grant is enough to talk to a company. Do not spend time on cont
 
 ## Next
 
-Follow [ROADMAP.md](ROADMAP.md) leftover v0 only. Leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not open Slice 6, workflows, a plugin registry, or more TUI tickets until those four hold.
+Follow [ROADMAP.md](ROADMAP.md). Four SUCCESS checks hold ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) closed). Leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). Current feature milestone is v2-s1-bus. Do not grow TUI.
 
 Dogfood plan: [SECURITY.md](SECURITY.md) then [BOOTSTRAP.md](BOOTSTRAP.md).
 

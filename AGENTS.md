@@ -3,7 +3,7 @@
 Reading: [docs map](docs/README.md)
 
 Previous: [Governance](docs/GOVERNANCE.md) and the example tomls
-Next: leftover SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for 2 and 3) stay open. Do not claim those four hold. Do not unfreeze TUI ([#51](https://github.com/ravand-ai/RavandAgents/issues/51)). v1 work is the [Ravand v1](https://github.com/orgs/ravand-ai/projects/2) board. Sprints are **milestones**, not labels.
+Next: leftover CLI is [`ravand init`](https://github.com/ravand-ai/RavandAgents/issues/162). SUCCESS [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed. Four SUCCESS checks hold. Do not grow TUI ([#51](https://github.com/ravand-ai/RavandAgents/issues/51)). Current feature milestone is [v2-s1-bus](https://github.com/ravand-ai/RavandAgents/milestone/6). Sprints are **milestones**, not labels.
 
 This file has two parts. Stack, verify, and branches are for the task protocol. "Adopted product rules" is the implement contract. Skip to that heading if you are reading the design.
 
@@ -124,7 +124,7 @@ A green pytest is not a merge. Review exists because these faults still pass tes
 - The build backend becomes hatchling.
 - A new PyPI dep arrives without an issue that named it.
 - The PR is still blocked by an open parent.
-- TUI (#51) or leftover SUCCESS (#56) gets closed by accident.
+- TUI (#51) gets closed by accident. SUCCESS (#56) is already closed.
 
 The six-point checklist is the merge gate so a human does not re-read every diff. If a point is not green, the PR is not safe. Do not merge on vibe.
 
@@ -200,7 +200,7 @@ v0 is **one process**. Do not stand up a bus or Postgres until v2 flags exist.
 
 ### Implementation order (do not skip)
 
-Leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. One GitHub issue per branch. TDD: write the failing pytest first, then the code. Do not start v1, Slice 6, or TUI. Issue 56 stays open. Do not implement issue 51.
+Leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). SUCCESS [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed. Current feature milestone is v2-s1-bus. One GitHub issue per branch. TDD: write the failing pytest first, then the code. Do not grow TUI. Do not implement issue 51.
 
 #### Slice 0: skeleton
 
