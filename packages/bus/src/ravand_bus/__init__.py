@@ -131,4 +131,6 @@ class Bus:
         raise FailClosed("bus message is missing")
 
 
-__all__ = ["Bus", "FailClosed", "QUEUES", "TaskMessage"]
+from ravand_bus.pgmq import PgmqBus
+
+__all__ = ["Bus", "FailClosed", "QUEUES", "TaskMessage", "PgmqBus"]
