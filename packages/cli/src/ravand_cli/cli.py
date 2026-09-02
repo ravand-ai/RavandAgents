@@ -20,6 +20,7 @@ from ravand_runtime import audit_agent_denied, run_native_prompt, run_prompt, se
 from ravand_runtime.cron import serve_cron
 from ravand_runtime.http_api import DEFAULT_HTTP_PORT, serve_http
 from ravand_runtime.plan import plan_mode_active
+from ravand_runtime.worker import serve_worker
 
 NOT_IMPLEMENTED = "not implemented"
 
@@ -103,6 +104,7 @@ def _parser() -> argparse.ArgumentParser:
         help=f"loopback port (default {DEFAULT_HTTP_PORT})",
     )
     serve_sub.add_parser("cron", help="local cron scheduler")
+    serve_sub.add_parser("worker", help="consume q.tasks from the bus")
     return parser
 
 
@@ -325,6 +327,8 @@ def main(argv: list[str] | None = None) -> int:
             return serve_http(port=int(args.port))
         if args.serve_command == "cron":
             return serve_cron()
+        if args.serve_command == "worker":
+            return serve_worker()
         print(NOT_IMPLEMENTED, file=sys.stderr)
         return 2
     print(NOT_IMPLEMENTED, file=sys.stderr)
