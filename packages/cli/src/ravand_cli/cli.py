@@ -17,6 +17,7 @@ from ravand_cli.status import run_status
 from ravand_cli.tui import run_tui
 from ravand_plugins import FailClosed as PluginFailClosed, PluginHost
 from ravand_runtime import audit_agent_denied, run_native_prompt, run_prompt, serve_acp, steer_prompt
+from ravand_runtime.cron import serve_cron
 from ravand_runtime.http_api import DEFAULT_HTTP_PORT, serve_http
 from ravand_runtime.plan import plan_mode_active
 
@@ -101,6 +102,7 @@ def _parser() -> argparse.ArgumentParser:
         default=DEFAULT_HTTP_PORT,
         help=f"loopback port (default {DEFAULT_HTTP_PORT})",
     )
+    serve_sub.add_parser("cron", help="local cron scheduler")
     return parser
 
 
@@ -321,6 +323,8 @@ def main(argv: list[str] | None = None) -> int:
             return serve_acp()
         if args.serve_command == "http":
             return serve_http(port=int(args.port))
+        if args.serve_command == "cron":
+            return serve_cron()
         print(NOT_IMPLEMENTED, file=sys.stderr)
         return 2
     print(NOT_IMPLEMENTED, file=sys.stderr)

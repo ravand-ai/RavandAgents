@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import sys
+import time
 import tomllib
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
 from ravand_audit import AuditLog
 from ravand_policy import (
+    FailClosed as PolicyFailClosed,
     PolicyDenied,
     UnknownAgent,
     ravand_home,
@@ -18,6 +22,8 @@ from ravand_policy import (
 )
 from ravand_runtime.dispatch import dispatch
 from ravand_sessions import FailClosed, SessionStore
+
+DEFAULT_CRON_INTERVAL = 60.0
 
 _JOB_KEYS = frozenset(
     {"id", "spec", "prompt", "agent", "account", "classification", "secret_ref"}
@@ -283,3 +289,66 @@ def fire_cron(
                 continue
         fired.append(job)
     return fired
+
+
+def _scrub(text: str) -> str:
+    for marker in _TOKEN_MARKERS:
+        if marker in text:
+            return "fail closed"
+    return text
+
+
+def serve_cron(
+    cwd: Path | None = None,
+    *,
+    now: datetime | None = None,
+    interval: float = DEFAULT_CRON_INTERVAL,
+    bus: object | None = None,
+    store: SessionStore | None = None,
+    audit: AuditLog | None = None,
+    sleep: Callable[[float], None] | None = None,
+    max_ticks: int | None = None,
+) -> int:
+    """Loop fire_cron for due jobs. Fail closed if Policy cannot resolve cwd."""
+    root = Path(cwd) if cwd is not None else Path.cwd()
+    root = root.resolve()
+    try:
+        resolve(root)
+    except (PolicyFailClosed, PolicyDenied, UnknownAgent) as exc:
+        print(_scrub(str(exc)), file=sys.stderr)
+        return getattr(exc, "exit_code", 3)
+    if not isinstance(interval, (int, float)) or interval < 0:
+        print("fail closed", file=sys.stderr)
+        return 3
+    if max_ticks is not None and (not isinstance(max_ticks, int) or max_ticks < 1):
+        print("fail closed", file=sys.stderr)
+        return 3
+    sleeper = sleep if sleep is not None else time.sleep
+    log = audit if audit is not None else AuditLog(ravand_home())
+    actual_bus = bus
+    actual_store = store
+    if actual_bus is None:
+        from ravand_bus import Bus
+
+        actual_bus = Bus()
+    if actual_store is None:
+        actual_store = SessionStore(ravand_home())
+    tick = 0
+    try:
+        while True:
+            fire_cron(
+                root,
+                now=now,
+                bus=actual_bus,
+                store=actual_store,
+                audit=log,
+            )
+            tick += 1
+            if max_ticks is not None and tick >= max_ticks:
+                return 0
+            sleeper(interval)
+    except KeyboardInterrupt:
+        return 0
+    except PolicyFailClosed as exc:
+        print(_scrub(str(exc)), file=sys.stderr)
+        return getattr(exc, "exit_code", 3)
