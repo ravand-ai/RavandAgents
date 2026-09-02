@@ -1,4 +1,4 @@
-"""Cron trigger: Policy then dispatch (GitHub issue #136).
+"""Cron trigger: Policy then dispatch (GitHub issues #136, #210).
 
 Source of law: docs/HLD.md Cron, docs/MODULAR.md Triggers, docs/SCHEMA.md [cron].
 """
@@ -6,6 +6,8 @@ Source of law: docs/HLD.md Cron, docs/MODULAR.md Triggers, docs/SCHEMA.md [cron]
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -14,8 +16,10 @@ import pytest
 from ravand_audit import AuditLog
 from ravand_bus import Bus
 from ravand_policy import PolicyDenied
-from ravand_runtime.cron import fire_cron, load_cron_jobs
+from ravand_runtime.cron import fire_cron, load_cron_jobs, serve_cron
 from ravand_sessions import SessionStore
+
+ROOT = Path(__file__).resolve().parents[1]
 
 QUEUE_TASKS = "q.tasks"
 DUE = datetime(2026, 9, 7, 9, 0, tzinfo=UTC)
@@ -454,3 +458,167 @@ def test_no_bus_still_runs_policy(
     assert [event["type"] for event in events] == ["trigger.denied"]
     assert events[0]["taskId"] == "morning"
     assert list((home / "sessions").glob("*.json")) == []
+
+
+def _ravand(
+    *args: str, cwd: Path | None = None, env: dict | None = None
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["uv", "run", "ravand", *args],
+        cwd=cwd or ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+        timeout=15,
+    )
+
+
+def test_serve_cron_help_exists() -> None:
+    result = _ravand("serve", "cron", "--help")
+    assert result.returncode == 0, result.stderr
+    combined = (result.stdout + result.stderr).lower()
+    assert "usage" in combined
+    assert "cron" in combined
+
+
+def test_serve_cron_fails_closed_when_policy_unresolved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    home = tmp_path / "home"
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    slept: list[float] = []
+    code = serve_cron(
+        cwd=empty,
+        now=DUE,
+        interval=0,
+        max_ticks=1,
+        sleep=slept.append,
+    )
+    assert code != 0
+    assert slept == []
+    assert list((home / "sessions").glob("*.json")) == []
+
+
+def test_cli_serve_cron_fail_closed_without_harness(tmp_path: Path) -> None:
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    home = tmp_path / "home"
+    env = dict(os.environ)
+    env["RAVAND_HOME"] = str(home)
+    result = _ravand("serve", "cron", cwd=empty, env=env)
+    assert result.returncode != 0
+    blob = (result.stdout + result.stderr).lower()
+    assert "sk-" not in blob
+    assert "xai-" not in blob
+    assert "bearer" not in blob
+
+
+def test_serve_cron_fires_due_job_without_sleeping_a_minute(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    home.mkdir()
+    _write_harness(
+        repo,
+        extra=(
+            "[cron]\n"
+            'jobs = [{ id = "morning", spec = "0 9 * * 1-5", prompt = "status" }]\n'
+        ),
+    )
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    bus = Bus()
+    store = SessionStore(home)
+    slept: list[float] = []
+    code = serve_cron(
+        cwd=repo,
+        now=DUE,
+        interval=0,
+        max_ticks=1,
+        bus=bus,
+        store=store,
+        audit=AuditLog(home),
+        sleep=slept.append,
+    )
+    assert code == 0
+    assert all(seconds < 60 for seconds in slept)
+    got = bus.read(QUEUE_TASKS, visibility_timeout=600)
+    assert got is not None
+    assert got.task_id == "morning:20260907T0900"
+    assert got.prompt == "status"
+    assert got.agent == "grok"
+
+
+def test_serve_cron_loop_uses_injected_interval(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    home.mkdir()
+    _write_harness(
+        repo,
+        extra=(
+            "[cron]\n"
+            'jobs = [{ id = "morning", spec = "0 9 * * 1-5", prompt = "status" }]\n'
+        ),
+    )
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    bus = Bus()
+    store = SessionStore(home)
+    slept: list[float] = []
+    code = serve_cron(
+        cwd=repo,
+        now=DUE,
+        interval=0,
+        max_ticks=2,
+        bus=bus,
+        store=store,
+        audit=AuditLog(home),
+        sleep=slept.append,
+    )
+    assert code == 0
+    assert slept == [0]
+    got = bus.read(QUEUE_TASKS, visibility_timeout=600)
+    assert got is not None
+    assert got.task_id == "morning:20260907T0900"
+    assert bus.read(QUEUE_TASKS, visibility_timeout=600) is None
+
+
+def test_serve_cron_classification_mismatch_skips_and_audits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    home.mkdir()
+    _write_harness(
+        repo,
+        classification="customer",
+        extra=(
+            "[cron]\n"
+            "jobs = [{ id = \"morning\", spec = \"0 9 * * 1-5\", "
+            'prompt = "status", classification = "internal" }]\n'
+        ),
+    )
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    bus = Bus()
+    store = SessionStore(home)
+    code = serve_cron(
+        cwd=repo,
+        now=DUE,
+        interval=0,
+        max_ticks=1,
+        bus=bus,
+        store=store,
+        audit=AuditLog(home),
+        sleep=lambda _seconds: None,
+    )
+    assert code == 0
+    assert bus.read(QUEUE_TASKS, visibility_timeout=600) is None
+    events = _audit_events(home)
+    assert [event["type"] for event in events] == ["trigger.denied"]
+    assert events[0]["taskId"] == "morning"
+    blob = (home / "audit.jsonl").read_text(encoding="utf-8")
+    assert "sk-" not in blob
