@@ -76,7 +76,7 @@ def _api(
         ("127.0.0.1", 0),
         bus=bus,
         store=store,
-        workspace_roots=[workspace],
+        workspace_root=workspace,
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -231,7 +231,7 @@ def test_unknown_agent_fails_closed(
     assert list((home / "sessions").glob("*.json")) == []
 
 
-def test_cwd_outside_workspace_fails_closed(
+def test_payload_cwd_is_ignored(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     repo = tmp_path / "repo"
@@ -245,12 +245,12 @@ def test_cwd_outside_workspace_fails_closed(
             url,
             {
                 "cwd": str(outside),
-                "prompt": "escape",
-                "taskId": "task-escape",
+                "prompt": "stay in workspace",
+                "taskId": "task-bound",
             },
         )
-    assert status != 200
-    for marker in FORBIDDEN:
-        assert marker not in body
-    assert bus.read(QUEUE_TASKS, visibility_timeout=600) is None
-    assert list((home / "sessions").glob("*.json")) == []
+    assert status == 200, body
+    got = bus.read(QUEUE_TASKS, visibility_timeout=600)
+    assert got is not None
+    assert got.cwd_hint == str(repo.resolve())
+    assert got.cwd_hint != str(outside.resolve())
