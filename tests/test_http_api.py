@@ -1,7 +1,9 @@
-"""HTTP API + ravand serve http SSE gateway (GitHub issues #137, #206)."""
+"""HTTP API + ravand serve http SSE gateway (GitHub issues #137, #206, #208)."""
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
 import subprocess
@@ -21,6 +23,9 @@ from ravand_sessions import SessionStore
 ROOT = Path(__file__).resolve().parents[1]
 QUEUE_TASKS = "q.tasks"
 FORBIDDEN = ("sk-", "xai-", "Bearer", "cookies")
+WEBHOOK_SECRET = b"test-webhook-secret"
+WEBHOOK_SECRET_REF = "vault:work/webhook"
+WEBHOOK_PATH = "/hooks/deploy"
 SESSION_EVENT_TYPES = frozenset(
     {
         "run.started",
@@ -45,6 +50,7 @@ def _write_harness(
     overflow: str = "kimi",
     deny: str = "[]",
     classification: str = "internal",
+    extra: str = "",
 ) -> None:
     repo.mkdir(parents=True, exist_ok=True)
     (repo / "harness.toml").write_text(
@@ -56,6 +62,7 @@ def _write_harness(
                 f"deny = {deny}",
                 'permissions = "repo-only"',
                 f'classification = "{classification}"',
+                extra,
                 "",
                 "[agents.grok]",
                 'command = ["grok", "agent", "stdio"]',
@@ -67,6 +74,46 @@ def _write_harness(
         ),
         encoding="utf-8",
     )
+
+
+def _webhook_extra(
+    *,
+    path: str = WEBHOOK_PATH,
+    secret_ref: str = WEBHOOK_SECRET_REF,
+    prompt: str = "inbound webhook",
+) -> str:
+    return "\n".join(
+        [
+            "[triggers.webhook]",
+            f'path = "{path}"',
+            f'secret_ref = "{secret_ref}"',
+            f'prompt = "{prompt}"',
+            "",
+        ]
+    )
+
+
+def _write_vault_secret(home: Path, ref: str, body: str) -> None:
+    assert ref.startswith("vault:")
+    path = home / "secrets" / ref.removeprefix("vault:")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(body.encode("utf-8"))
+
+
+def _sig(body: bytes, secret: bytes = WEBHOOK_SECRET) -> str:
+    digest = hmac.new(secret, body, hashlib.sha256).hexdigest()
+    return f"sha256={digest}"
+
+
+def _audit_events(root: Path) -> list[dict[str, object]]:
+    path = root / "audit.jsonl"
+    if not path.is_file():
+        return []
+    return [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
 
 
 @contextmanager
@@ -85,20 +132,31 @@ def _api(
     thread.start()
     host, port = server.server_address
     try:
-        yield f"http://{host}:{port}/run", bus, store
+        yield f"http://{host}:{port}", bus, store
     finally:
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
 
 
-def _post(url: str, payload: dict) -> tuple[int, str, str]:
-    data = json.dumps(payload).encode()
+def _post(
+    url: str,
+    payload: dict | bytes,
+    *,
+    headers: dict[str, str] | None = None,
+) -> tuple[int, str, str]:
+    if isinstance(payload, bytes):
+        data = payload
+    else:
+        data = json.dumps(payload).encode()
+    req_headers = {"Content-Type": "application/json"}
+    if headers:
+        req_headers.update(headers)
     req = urllib.request.Request(
         url,
         data=data,
         method="POST",
-        headers={"Content-Type": "application/json"},
+        headers=req_headers,
     )
     try:
         with urllib.request.urlopen(req, timeout=5) as resp:
@@ -127,9 +185,9 @@ def test_http_run_enqueues_and_streams_sse(
     home = tmp_path / "home"
     _write_harness(repo)
     monkeypatch.setenv("RAVAND_HOME", str(home))
-    with _api(home, workspace=repo) as (url, bus, _store):
+    with _api(home, workspace=repo) as (base, bus, _store):
         status, body, ctype = _post(
-            url,
+            f"{base}/run",
             {
                 "cwd": str(repo),
                 "prompt": "ship the http api",
@@ -169,9 +227,9 @@ def test_denied_policy_does_not_enqueue(
     home = tmp_path / "home"
     _write_harness(repo, default="kimi", deny='["kimi"]')
     monkeypatch.setenv("RAVAND_HOME", str(home))
-    with _api(home, workspace=repo) as (url, bus, _store):
+    with _api(home, workspace=repo) as (base, bus, _store):
         status, body, _ctype = _post(
-            url,
+            f"{base}/run",
             {
                 "cwd": str(repo),
                 "prompt": "should not queue",
@@ -193,9 +251,9 @@ def test_secret_prompt_does_not_enqueue_or_leak(
     home = tmp_path / "home"
     _write_harness(repo)
     monkeypatch.setenv("RAVAND_HOME", str(home))
-    with _api(home, workspace=repo) as (url, bus, _store):
+    with _api(home, workspace=repo) as (base, bus, _store):
         status, body, _ctype = _post(
-            url,
+            f"{base}/run",
             {
                 "cwd": str(repo),
                 "prompt": "token sk-secret-value must not queue",
@@ -217,9 +275,9 @@ def test_unknown_agent_fails_closed(
     home = tmp_path / "home"
     _write_harness(repo)
     monkeypatch.setenv("RAVAND_HOME", str(home))
-    with _api(home, workspace=repo) as (url, bus, _store):
+    with _api(home, workspace=repo) as (base, bus, _store):
         status, body, _ctype = _post(
-            url,
+            f"{base}/run",
             {
                 "cwd": str(repo),
                 "prompt": "unknown agent",
@@ -243,9 +301,9 @@ def test_payload_cwd_is_ignored(
     outside.mkdir()
     _write_harness(repo)
     monkeypatch.setenv("RAVAND_HOME", str(home))
-    with _api(home, workspace=repo) as (url, bus, _store):
+    with _api(home, workspace=repo) as (base, bus, _store):
         status, body, _ctype = _post(
-            url,
+            f"{base}/run",
             {
                 "cwd": str(outside),
                 "prompt": "stay in workspace",
@@ -390,3 +448,136 @@ def test_cli_serve_http_fail_closed_without_harness(tmp_path: Path) -> None:
     blob = (result.stdout + result.stderr).lower()
     for marker in FORBIDDEN:
         assert marker not in blob
+
+
+def test_signed_webhook_post_dispatches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    home.mkdir()
+    _write_harness(repo, extra=_webhook_extra())
+    _write_vault_secret(home, WEBHOOK_SECRET_REF, WEBHOOK_SECRET.decode())
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    body = b'{"ok":true}'
+    with _api(home, workspace=repo) as (base, bus, _store):
+        status, resp, _ctype = _post(
+            f"{base}{WEBHOOK_PATH}",
+            body,
+            headers={"X-Ravand-Signature": _sig(body)},
+        )
+    assert status == 200, resp
+    for marker in FORBIDDEN:
+        assert marker not in resp
+    assert WEBHOOK_SECRET.decode() not in resp
+    got = bus.read(QUEUE_TASKS, visibility_timeout=600)
+    assert got is not None
+    assert got.prompt == "inbound webhook"
+    assert got.agent == "grok"
+    assert got.profile == "work"
+    assert got.cwd_hint == str(repo.resolve())
+    assert list((home / "sessions").glob("*.json"))
+    events = _audit_events(home)
+    assert "trigger.denied" not in [event["type"] for event in events]
+
+
+def test_unsigned_webhook_post_is_403_and_audits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    home.mkdir()
+    _write_harness(repo, extra=_webhook_extra())
+    _write_vault_secret(home, WEBHOOK_SECRET_REF, WEBHOOK_SECRET.decode())
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    body = b'{"ok":true}'
+    with _api(home, workspace=repo) as (base, bus, _store):
+        status, resp, _ctype = _post(f"{base}{WEBHOOK_PATH}", body)
+    assert status == 403
+    for marker in FORBIDDEN:
+        assert marker not in resp
+    assert WEBHOOK_SECRET.decode() not in resp
+    assert bus.read(QUEUE_TASKS, visibility_timeout=600) is None
+    assert list((home / "sessions").glob("*.json")) == []
+    events = _audit_events(home)
+    assert [event["type"] for event in events] == ["trigger.denied"]
+
+
+def test_unknown_webhook_path_is_403_and_audits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    home.mkdir()
+    _write_harness(repo, extra=_webhook_extra())
+    _write_vault_secret(home, WEBHOOK_SECRET_REF, WEBHOOK_SECRET.decode())
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    body = b'{"ok":true}'
+    with _api(home, workspace=repo) as (base, bus, _store):
+        status, resp, _ctype = _post(
+            f"{base}/hooks/unknown",
+            body,
+            headers={"X-Ravand-Signature": _sig(body)},
+        )
+    assert status == 403
+    for marker in FORBIDDEN:
+        assert marker not in resp
+    assert bus.read(QUEUE_TASKS, visibility_timeout=600) is None
+    events = _audit_events(home)
+    assert [event["type"] for event in events] == ["trigger.denied"]
+
+
+def test_bad_webhook_signature_is_403_and_audits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    home.mkdir()
+    _write_harness(repo, extra=_webhook_extra())
+    _write_vault_secret(home, WEBHOOK_SECRET_REF, WEBHOOK_SECRET.decode())
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    body = b'{"ok":true}'
+    with _api(home, workspace=repo) as (base, bus, _store):
+        status, resp, _ctype = _post(
+            f"{base}{WEBHOOK_PATH}",
+            body,
+            headers={"X-Ravand-Signature": _sig(body, b"wrong-secret")},
+        )
+    assert status == 403
+    assert bus.read(QUEUE_TASKS, visibility_timeout=600) is None
+    events = _audit_events(home)
+    assert [event["type"] for event in events] == ["trigger.denied"]
+    blob = (home / "audit.jsonl").read_text(encoding="utf-8")
+    for marker in FORBIDDEN:
+        assert marker not in blob
+    assert WEBHOOK_SECRET.decode() not in blob
+
+
+def test_run_unchanged_when_webhook_configured(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    home.mkdir()
+    _write_harness(repo, extra=_webhook_extra())
+    _write_vault_secret(home, WEBHOOK_SECRET_REF, WEBHOOK_SECRET.decode())
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    with _api(home, workspace=repo) as (base, bus, _store):
+        status, body, ctype = _post(
+            f"{base}/run",
+            {
+                "cwd": str(repo),
+                "prompt": "still sse",
+                "taskId": "run-with-hook",
+            },
+        )
+    assert status == 200, body
+    assert "text/event-stream" in ctype
+    events = _sse_events(body)
+    assert any(event["type"] == "run.started" for event in events)
+    for event in events:
+        assert event["taskId"] == "run-with-hook"
+    got = bus.read(QUEUE_TASKS, visibility_timeout=600)
+    assert got is not None
+    assert got.task_id == "run-with-hook"
+    assert got.prompt == "still sse"

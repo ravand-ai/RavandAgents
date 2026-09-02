@@ -1,4 +1,4 @@
-"""HTTP API: accept a run, resolve Policy, enqueue, stream SSE SessionEvent."""
+"""HTTP API: accept a run or signed webhook, resolve Policy, enqueue, stream SSE."""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ from ravand_policy import (
     resolve,
 )
 from ravand_runtime.dispatch import dispatch
+from ravand_runtime.webhook import handle_webhook
 from ravand_sessions import FailClosed as SessionFailClosed, SessionStore
 
 _FORBIDDEN = ("sk-", "xai-", "Bearer", "cookies")
@@ -68,7 +69,7 @@ class HttpApiServer(HTTPServer):
 
 
 class HttpApiHandler(BaseHTTPRequestHandler):
-    """POST /run: Policy, dispatch, SSE SessionEvent."""
+    """POST /run: Policy, dispatch, SSE. Other POST: signed harness webhook."""
 
     def log_message(self, *_args: object) -> None:
         return
@@ -77,10 +78,9 @@ class HttpApiHandler(BaseHTTPRequestHandler):
         self._fail(403, "fail closed")
 
     def do_POST(self) -> None:  # noqa: N802
-        path = self.path.split("?", 1)[0].rstrip("/")
-        if path != "/run":
-            self._fail(403, "fail closed")
-            return
+        path = self.path.split("?", 1)[0]
+        if path != "/" and path.endswith("/"):
+            path = path[:-1]
         length_raw = self.headers.get("Content-Length")
         if not length_raw:
             self._fail(400, "fail closed")
@@ -90,7 +90,20 @@ class HttpApiHandler(BaseHTTPRequestHandler):
         except ValueError:
             self._fail(400, "fail closed")
             return
+        if length < 0:
+            self._fail(400, "fail closed")
+            return
         raw = self.rfile.read(length)
+        server = self.server
+        if not isinstance(server, HttpApiServer):
+            self._fail(403, "fail closed")
+            return
+        if path != "/run":
+            self._handle_webhook(server, path=path, body=raw)
+            return
+        self._handle_run(server, raw)
+
+    def _handle_run(self, server: HttpApiServer, raw: bytes) -> None:
         try:
             payload = json.loads(raw.decode())
         except (UnicodeDecodeError, json.JSONDecodeError):
@@ -121,10 +134,6 @@ class HttpApiHandler(BaseHTTPRequestHandler):
         if account is not None and not isinstance(account, str):
             self._fail(400, "fail closed")
             return
-        server = self.server
-        if not isinstance(server, HttpApiServer):
-            self._fail(403, "fail closed")
-            return
         try:
             record = dispatch(
                 server.workspace_root,
@@ -154,6 +163,29 @@ class HttpApiHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
         self.wfile.flush()
 
+    def _handle_webhook(
+        self, server: HttpApiServer, *, path: str, body: bytes
+    ) -> None:
+        signature = self.headers.get("X-Ravand-Signature")
+        try:
+            handle_webhook(
+                server.workspace_root,
+                path=path,
+                body=body,
+                signature=signature,
+                bus=server.bus,
+                store=server.store,
+            )
+        except (PolicyDenied, UnknownAgent, FailClosed, BusFailClosed, SessionFailClosed):
+            self._fail(403, "fail closed")
+            return
+        payload = json.dumps({"ok": True}, separators=(",", ":")).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
     def _fail(self, code: int, message: str) -> None:
         payload = json.dumps(
             {"error": _scrub(message)}, separators=(",", ":")
@@ -173,7 +205,7 @@ def serve_http(
     store: SessionStore | None = None,
     on_listen: Callable[[HttpApiServer], None] | None = None,
 ) -> int:
-    """Bind 127.0.0.1 and serve POST /run as SSE until shutdown.
+    """Bind 127.0.0.1 and serve POST /run (SSE) and signed webhooks until shutdown.
 
     Fail closed if Policy cannot resolve the workspace. Local-only; no cloud users.
     """
