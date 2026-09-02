@@ -10,7 +10,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ravand_audit import AuditLog
-from ravand_policy import PolicyDenied, UnknownAgent, ravand_home, resolve
+from ravand_policy import (
+    PolicyDenied,
+    UnknownAgent,
+    load_secret,
+    ravand_home,
+    require_secret_ref,
+    resolve,
+)
 from ravand_runtime.dispatch import dispatch
 from ravand_sessions import FailClosed, SessionStore
 
@@ -35,14 +42,6 @@ def _refuse_tokens(text: str) -> None:
     for marker in _TOKEN_MARKERS:
         if marker in text:
             raise PolicyDenied("webhook has a raw key")
-
-
-def _require_secret_ref(secret_ref: str) -> None:
-    if not secret_ref.startswith("vault:"):
-        raise PolicyDenied("secret_ref must use vault:")
-    rel = secret_ref.removeprefix("vault:")
-    if not rel or rel.startswith("/") or ".." in Path(rel).parts:
-        raise PolicyDenied("secret_ref path is invalid")
 
 
 def _norm_path(path: str) -> str:
@@ -70,7 +69,7 @@ def _parse_webhook(item: object) -> WebhookTrigger:
     _refuse_tokens(path)
     _refuse_tokens(secret_ref)
     _refuse_tokens(prompt)
-    _require_secret_ref(secret_ref)
+    require_secret_ref(secret_ref)
     webhook_id = item.get("id")
     agent = item.get("agent")
     account = item.get("account")
@@ -134,20 +133,6 @@ def verify_webhook_signature(
         return False
 
 
-def _load_secret(secret_ref: str, *, home: Path) -> bytes:
-    _require_secret_ref(secret_ref)
-    rel = secret_ref.removeprefix("vault:")
-    root = (home / "secrets").resolve()
-    path = (home / "secrets" / rel).resolve()
-    try:
-        path.relative_to(root)
-    except ValueError as exc:
-        raise PolicyDenied("secret_ref path escaped") from exc
-    if not path.is_file() or path.stat().st_size == 0:
-        raise PolicyDenied("secret_ref is missing")
-    return path.read_bytes().strip()
-
-
 def _deny(
     trigger: WebhookTrigger | None,
     *,
@@ -188,7 +173,7 @@ def handle_webhook(
         _deny(trigger, cwd=cwd, audit=log, detail="unknown webhook")
         raise PolicyDenied("unknown webhook")
     try:
-        secret = _load_secret(trigger.secret_ref, home=ravand_home())
+        secret = load_secret(trigger.secret_ref, home=ravand_home())
     except PolicyDenied as exc:
         _deny(trigger, cwd=cwd, audit=log, detail="secret_ref is missing")
         raise PolicyDenied("secret_ref is missing") from exc

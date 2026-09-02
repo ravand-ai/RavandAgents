@@ -8,7 +8,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ravand_audit import AuditLog
-from ravand_policy import PolicyDenied, UnknownAgent, ravand_home, resolve
+from ravand_policy import (
+    PolicyDenied,
+    UnknownAgent,
+    ravand_home,
+    require_secret_ref,
+    resolve,
+    secret_present,
+)
 from ravand_runtime.dispatch import dispatch
 from ravand_sessions import FailClosed, SessionStore
 
@@ -33,14 +40,6 @@ def _refuse_tokens(text: str) -> None:
     for marker in _TOKEN_MARKERS:
         if marker in text:
             raise PolicyDenied("cron job has a raw key")
-
-
-def _require_secret_ref(secret_ref: str) -> None:
-    if not secret_ref.startswith("vault:"):
-        raise PolicyDenied("secret_ref must use vault:")
-    rel = secret_ref.removeprefix("vault:")
-    if not rel or rel.startswith("/") or ".." in Path(rel).parts:
-        raise PolicyDenied("secret_ref path is invalid")
 
 
 def _parse_job(item: object) -> CronJob:
@@ -80,8 +79,8 @@ def _parse_job(item: object) -> CronJob:
     if secret_ref is not None:
         if not isinstance(secret_ref, str) or not secret_ref.strip():
             raise PolicyDenied("cron job secret_ref is invalid")
-        _require_secret_ref(secret_ref)
         _refuse_tokens(secret_ref)
+        require_secret_ref(secret_ref)
     _spec_fields(spec)
     return CronJob(
         id=job_id,
@@ -253,6 +252,19 @@ def fire_cron(
                 agent=policy.agent,
             )
             continue
+        if job.secret_ref is not None:
+            try:
+                secret_present(job.secret_ref, home=ravand_home())
+            except PolicyDenied:
+                _deny(
+                    job,
+                    cwd=cwd,
+                    audit=log,
+                    detail="secret_ref is missing",
+                    profile=policy.profile,
+                    agent=policy.agent,
+                )
+                continue
         if bus is not None:
             if store is None:
                 raise PolicyDenied("cron dispatch requires a session store")
