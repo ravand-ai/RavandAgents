@@ -557,6 +557,110 @@ def _memory_for_run(
     return augment_prompt(prompt, notes), store
 
 
+def _run_overflow(
+    policy: ResolvedPolicy,
+    prompt: str,
+    *,
+    cwd: Path,
+    sink: EventSink,
+    task_id: str,
+    store: SessionStore,
+    log: AuditLog,
+    primary_record: SessionRecord,
+    tracer: Tracer,
+    ask: AskFn | None = None,
+    ask_plan: AskFn | None = None,
+    yes: bool = False,
+    cancel: threading.Event | None = None,
+    acp_forward: Callable[[dict[str, Any]], None] | None = None,
+) -> int:
+    """Start the overflow agent for the same task_id. Fail closed on AuthRequired."""
+    overflow_agent = policy.overflow_agent
+    assert overflow_agent is not None
+    log.emit(
+        "agent.overflow",
+        task_id=task_id,
+        profile=policy.profile,
+        agent=policy.agent,
+        detail=overflow_agent,
+    )
+    overflow_policy = resolve(cwd, agent_override=overflow_agent)
+    ensure_profile_home(overflow_policy.home)
+    log.emit(
+        "agent.selected",
+        task_id=task_id,
+        profile=overflow_policy.profile,
+        agent=overflow_policy.agent,
+        cwd=str(cwd),
+    )
+    try:
+        overflow_client = _connect(overflow_policy, cwd=cwd)
+    except AuthRequired:
+        with _invoke_agent(
+            tracer,
+            overflow_policy,
+            task_id=task_id,
+            conversation_id="",
+            overflow_of=primary_record.id,
+        ):
+            tracer.record_result("auth_missing")
+        return _auth_missing(overflow_policy, task_id=task_id, log=log)
+    except Exception as exc:
+        with _invoke_agent(
+            tracer,
+            overflow_policy,
+            task_id=task_id,
+            conversation_id="",
+            overflow_of=primary_record.id,
+        ):
+            tracer.record_result("crash")
+        print(str(exc), file=sys.stderr)
+        log.emit(
+            "run.ended",
+            task_id=task_id,
+            profile=overflow_policy.profile,
+            agent=overflow_policy.agent,
+            detail="error",
+        )
+        _emit(sink, {"type": "run.ended", "status": "error"}, task_id=task_id)
+        return 5
+    overflow_record = store.start(
+        task_id=task_id,
+        cwd=str(cwd),
+        profile=overflow_policy.profile,
+        agent=overflow_policy.agent,
+        command=overflow_policy.command,
+        overflow_of=primary_record.id,
+    )
+    log.emit(
+        "run.started",
+        task_id=task_id,
+        profile=overflow_policy.profile,
+        agent=overflow_policy.agent,
+        cwd=str(cwd),
+    )
+    _emit(sink, {"type": "run.started"}, task_id=task_id)
+    overflow_exit, _, _, _ = _attempt_run(
+        overflow_client,
+        overflow_policy,
+        prompt,
+        cwd=cwd,
+        sink=sink,
+        task_id=task_id,
+        store=store,
+        log=log,
+        record=overflow_record,
+        tracer=tracer,
+        ask=ask,
+        ask_plan=ask_plan,
+        yes=yes,
+        cancel=cancel,
+        overflow_of=primary_record.id,
+        acp_forward=acp_forward,
+    )
+    return overflow_exit
+
+
 def run_prompt(
     policy: ResolvedPolicy,
     prompt: str,
@@ -609,9 +713,45 @@ def run_prompt(
     try:
         client = _connect(policy, cwd=cwd)
     except AuthRequired:
+        if not _should_overflow(policy, triggered=True):
+            with _invoke_agent(tracer, policy, task_id=task_id, conversation_id=""):
+                tracer.record_result("auth_missing")
+            return _auth_missing(policy, task_id=task_id, log=log)
+        # Overflow instead of auth.missing on the primary.
         with _invoke_agent(tracer, policy, task_id=task_id, conversation_id=""):
             tracer.record_result("auth_missing")
-        return _auth_missing(policy, task_id=task_id, log=log)
+        record = store.start(
+            task_id=task_id,
+            cwd=str(cwd),
+            profile=policy.profile,
+            agent=policy.agent,
+            command=policy.command,
+        )
+        store.finish(record.id, status="auth", acp_session_id=None)
+        log.emit(
+            "run.ended",
+            task_id=task_id,
+            profile=policy.profile,
+            agent=policy.agent,
+            detail="auth",
+        )
+        _emit(sink, {"type": "run.ended", "status": "auth"}, task_id=task_id)
+        return _run_overflow(
+            policy,
+            prompt,
+            cwd=cwd,
+            sink=sink,
+            task_id=task_id,
+            store=store,
+            log=log,
+            primary_record=record,
+            tracer=tracer,
+            ask=ask,
+            ask_plan=ask_plan,
+            yes=yes,
+            cancel=cancel,
+            acp_forward=acp_forward,
+        )
     except Exception as exc:
         with _invoke_agent(tracer, policy, task_id=task_id, conversation_id=""):
             tracer.record_result("crash")
@@ -663,87 +803,19 @@ def run_prompt(
     if not _should_overflow(policy, triggered=triggered):
         return exit_code
 
-    overflow_agent = policy.overflow_agent
-    assert overflow_agent is not None
-    log.emit(
-        "agent.overflow",
-        task_id=task_id,
-        profile=policy.profile,
-        agent=policy.agent,
-        detail=overflow_agent,
-    )
-    overflow_policy = resolve(cwd, agent_override=overflow_agent)
-    ensure_profile_home(overflow_policy.home)
-    log.emit(
-        "agent.selected",
-        task_id=task_id,
-        profile=overflow_policy.profile,
-        agent=overflow_policy.agent,
-        cwd=str(cwd),
-    )
-    try:
-        overflow_client = _connect(overflow_policy, cwd=cwd)
-    except AuthRequired:
-        with _invoke_agent(
-            tracer,
-            overflow_policy,
-            task_id=task_id,
-            conversation_id="",
-            overflow_of=record.id,
-        ):
-            tracer.record_result("auth_missing")
-        return _auth_missing(overflow_policy, task_id=task_id, log=log)
-    except Exception as exc:
-        with _invoke_agent(
-            tracer,
-            overflow_policy,
-            task_id=task_id,
-            conversation_id="",
-            overflow_of=record.id,
-        ):
-            tracer.record_result("crash")
-        print(str(exc), file=sys.stderr)
-        log.emit(
-            "run.ended",
-            task_id=task_id,
-            profile=overflow_policy.profile,
-            agent=overflow_policy.agent,
-            detail="error",
-        )
-        _emit(sink, {"type": "run.ended", "status": "error"}, task_id=task_id)
-        return 5
-    overflow_record = store.start(
-        task_id=task_id,
-        cwd=str(cwd),
-        profile=overflow_policy.profile,
-        agent=overflow_policy.agent,
-        command=overflow_policy.command,
-        overflow_of=record.id,
-    )
-    log.emit(
-        "run.started",
-        task_id=task_id,
-        profile=overflow_policy.profile,
-        agent=overflow_policy.agent,
-        cwd=str(cwd),
-    )
-    _emit(sink, {"type": "run.started"}, task_id=task_id)
-    overflow_exit, _, _, _ = _attempt_run(
-        overflow_client,
-        overflow_policy,
+    return _run_overflow(
+        policy,
         prompt,
         cwd=cwd,
         sink=sink,
         task_id=task_id,
         store=store,
         log=log,
-        record=overflow_record,
+        primary_record=record,
         tracer=tracer,
         ask=ask,
         ask_plan=ask_plan,
         yes=yes,
         cancel=cancel,
-        overflow_of=record.id,
         acp_forward=acp_forward,
     )
-    return overflow_exit
