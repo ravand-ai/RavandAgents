@@ -2,17 +2,27 @@
 
 from __future__ import annotations
 
+import sys
 import threading
+import time
 from collections.abc import Callable
 from pathlib import Path
 
 from ravand_audit import AuditLog
 from ravand_bus import TaskMessage
-from ravand_policy import ravand_home
+from ravand_policy import (
+    FailClosed as PolicyFailClosed,
+    PolicyDenied,
+    UnknownAgent,
+    ravand_home,
+    resolve,
+)
 
 QUEUE_TASKS = "q.tasks"
 _VISIBILITY_TIMEOUT = 600
 _HEARTBEAT_INTERVAL = 30.0
+DEFAULT_WORKER_INTERVAL = 1.0
+_TOKEN_MARKERS = ("sk-", "xai-", "Bearer", "cookies")
 
 
 class FailClosed(Exception):
@@ -45,6 +55,11 @@ class Worker:
         self._idle = threading.Event()
         self._idle.set()
         self._lock = threading.Lock()
+
+    @property
+    def stopped(self) -> bool:
+        with self._lock:
+            return self._stopped
 
     def cordon(self) -> None:
         """Nack new jobs without running them."""
@@ -133,3 +148,86 @@ class Worker:
                 if self._draining:
                     self._stopped = True
                 self._idle.set()
+
+
+def _scrub(text: str) -> str:
+    for marker in _TOKEN_MARKERS:
+        if marker in text:
+            return "fail closed"
+    return text
+
+
+def _default_run(message: TaskMessage) -> int:
+    from ravand_runtime.run import run_prompt
+
+    cwd = Path(message.cwd_hint)
+    try:
+        policy = resolve(
+            cwd,
+            profile_override=message.profile,
+            agent_override=message.agent,
+        )
+    except (PolicyFailClosed, PolicyDenied, UnknownAgent) as exc:
+        return getattr(exc, "exit_code", 3)
+    return run_prompt(
+        policy,
+        message.prompt,
+        cwd=cwd,
+        sink=lambda _event: None,
+        yes=True,
+    )
+
+
+def serve_worker(
+    *,
+    bus: object | None = None,
+    run: Callable[[TaskMessage], int] | None = None,
+    interval: float = DEFAULT_WORKER_INTERVAL,
+    sleep: Callable[[float], None] | None = None,
+    max_ticks: int | None = None,
+    auth_ok: bool = True,
+    allowed_agents: frozenset[str] | None = None,
+    audit: AuditLog | None = None,
+    worker: Worker | None = None,
+) -> int:
+    """Loop Worker.run_once until drain/stop or max_ticks.
+
+    Tests inject sleep and max_ticks. Default bus is in-memory. No Kafka.
+    """
+    if not isinstance(interval, (int, float)) or interval < 0:
+        print("fail closed", file=sys.stderr)
+        return 3
+    if max_ticks is not None and (not isinstance(max_ticks, int) or max_ticks < 1):
+        print("fail closed", file=sys.stderr)
+        return 3
+    sleeper = sleep if sleep is not None else time.sleep
+    if worker is None:
+        actual_bus = bus
+        if actual_bus is None:
+            from ravand_bus import Bus
+
+            actual_bus = Bus()
+        runner = run if run is not None else _default_run
+        log = audit if audit is not None else AuditLog(ravand_home())
+        worker = Worker(
+            actual_bus,
+            run=runner,
+            auth_ok=auth_ok,
+            allowed_agents=allowed_agents,
+            audit=log,
+        )
+    tick = 0
+    try:
+        while True:
+            worker.run_once()
+            tick += 1
+            if worker.stopped:
+                return 0
+            if max_ticks is not None and tick >= max_ticks:
+                return 0
+            sleeper(interval)
+    except KeyboardInterrupt:
+        return 0
+    except FailClosed as exc:
+        print(_scrub(str(exc)), file=sys.stderr)
+        return 3
