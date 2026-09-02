@@ -3,7 +3,7 @@
 Reading: [Docs map](README.md)
 
 Previous: [Security contract](SECURITY.md)
-Next: leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open. Do not implement issue 51.
+Next: leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). SUCCESS [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed. Current feature milestone is v2-s1-bus. Do not grow TUI. Do not implement issue 51.
 
 We use Grok Build, Kimi, and Cursor to implement Ravand. `ravand run` already works on this repo. Prefer `uv run ravand run -a grok|kimi|cursor --yes` over naked CLIs here ([REVIEW.md](REVIEW.md)). The contracts still bind every run: `harness.toml`, `AGENTS.md`, `docs/SECURITY.md`.
 
@@ -63,7 +63,7 @@ Process lock:
 - If you discover extra work, open a new GitHub issue. Do not grow the current branch.
 - CodeQL on push and PR. A CodeQL alert becomes a new issue, not a silent extra commit on the wrong branch.
 - Safe work (SECURITY.md holds, TDD, no extra deps, disjoint files) does not wait for human approval to implement or commit. Human still merges to `main`.
-- Builder never merges. Leftover-v0 merge uses the six-point checklist in [REVIEW.md](REVIEW.md). Do not start v1, Slice 6, or TUI. Issue 56 stays open (checks 2 and 3). Do not implement issue 51.
+- Builder never merges. Merge uses the six-point checklist in [REVIEW.md](REVIEW.md). Leftover CLI is #162. Current feature milestone is v2-s1-bus. Do not grow TUI. Do not implement issue 51.
 
 ## Phases
 
@@ -102,13 +102,13 @@ Exit: `ravand run --format jsonl "print the repo name"` works with Grok logged i
 - Cursor and Kimi as registered backends
 - Implement the next GitHub issue **through** `ravand run` (kimi or cursor to code; grok to review; overflow CLI if one is limited)
 
-Those bullets shipped. Leftover is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold.
+Those bullets shipped. SUCCESS [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed. Leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162).
 
 Exit: SUCCESS.md four checks. We stop opening Grok outside Ravand for this repo.
 
 ### Phase E: stop
 
-No bus, no native loop, no plugin registry, no cloud. Do not start v1, Slice 6, or TUI. Open those issues only after Phase D.
+v1 shipped (including optional native loop). Current feature milestone is v2-s1-bus. Do not grow TUI. Do not implement issue 51.
 
 ## Agent graph (security first)
 
@@ -123,7 +123,7 @@ human (orchestrator, merge)
 
 Rules:
 
-- Builder never merges. Grok-as-reviewer never merges either. Human merges. Leftover-v0 merge uses the six-point checklist in [REVIEW.md](REVIEW.md). Do not start v1, Slice 6, or TUI. Issue 56 stays open (checks 2 and 3). Do not implement issue 51.
+- Builder never merges. Grok-as-reviewer never merges either. Human merges. Merge uses the six-point checklist in [REVIEW.md](REVIEW.md). Leftover CLI is #162. Current feature milestone is v2-s1-bus. Do not grow TUI. Do not implement issue 51.
 - Prefer Grok as security-gate / reviewer. If Grok is limited, Kimi or Cursor may review a PR they did **not** author.
 - If secret-scan fails, builder output is discarded.
 - Subagent grant ≤ parent grant.
@@ -156,7 +156,7 @@ Reject: pydantic because models look nicer, httpx before we have HTTP, a CLI fra
 
 ## Concurrent waves
 
-Waves 1–6 (through dogfood issue 9) are shipped / historical. Leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open (checks 2 and 3). Do not implement issue 51.
+Waves 1–6 (through dogfood issue 9) are shipped / historical. SUCCESS [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed. Leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). Current feature milestone is v2-s1-bus. Do not grow TUI. Do not implement issue 51.
 
 The table is historical file ownership. REVIEW.md still uses it. It is not a current work plan.
 
@@ -195,7 +195,7 @@ Do not commit unless the issue says to. Do not push.
 ## GitHub issues 1–9 (shipped / historical)
 
 Issues 1–9 are already opened and shipped: https://github.com/ravand-ai/RavandAgents/issues  
-The list is historical. Leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open (checks 2 and 3). Do not implement issue 51.
+The list is historical. SUCCESS [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed. Leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). Current feature milestone is v2-s1-bus. Do not grow TUI. Do not implement issue 51.
 
 1. shipped — Security contract in CI mindset (this file + SECURITY.md already). Remaining: test fixtures for deny.
 2. shipped — Slice 0 skeleton

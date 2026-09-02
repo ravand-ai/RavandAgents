@@ -13,14 +13,14 @@ The wedge is mixed seats under policy: `ravand which` / `ravand run` / audit. Gr
 
 We over-built `ravand tui` (Textual, chat bubbles, copy, keys, timers). It is optional chrome on v0.
 
-**Stop new TUI tickets** until the four SUCCESS checks hold.
+Four SUCCESS checks hold. [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed.
 
 1. Dogfood #9 through `ravand run` — **done** ([#9](https://github.com/ravand-ai/RavandAgents/issues/9) / PR [#60](https://github.com/ravand-ai/RavandAgents/pull/60))
-2. Leftover: the four SUCCESS checks. They do not hold yet. [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is checks 2 and 3 (two other real repos / second human). Not this repo only.
+2. Two other trees + second human — **done** ([#56](https://github.com/ravand-ai/RavandAgents/issues/56))
 
-[Issue #51](https://github.com/ravand-ai/RavandAgents/issues/51) (strip TUI junk) waits. Scripts keep `ravand run --format jsonl`.
+Do not grow TUI. [Issue #51](https://github.com/ravand-ai/RavandAgents/issues/51) (strip TUI junk) still waits. Scripts keep `ravand run --format jsonl`. Leftover CLI: [`ravand init`](https://github.com/ravand-ai/RavandAgents/issues/162). Current feature milestone: v2-s1-bus.
 
-## v0: one machine (in progress)
+## v0: one machine (shipped)
 
 **Shipped**
 
@@ -34,13 +34,11 @@ We over-built `ravand tui` (Textual, chat bubbles, copy, keys, timers). It is op
 - ACP turn survives the first tool: pick advertised permission `optionId` ([#54](https://github.com/ravand-ai/RavandAgents/issues/54) / PR [#58](https://github.com/ravand-ai/RavandAgents/pull/58))
 - Slice 5: OTel spans if `OTEL_EXPORTER_OTLP_ENDPOINT` is set, else no-op ([#55](https://github.com/ravand-ai/RavandAgents/issues/55) / PR [#59](https://github.com/ravand-ai/RavandAgents/pull/59); wiring [#57](https://github.com/ravand-ai/RavandAgents/issues/57) / PR [#61](https://github.com/ravand-ai/RavandAgents/pull/61))
 
-**Still v0. Do this. No native loop, no bus.**
+**Leftover CLI:** [`ravand init`](https://github.com/ravand-ai/RavandAgents/issues/162) writes `harness.toml`. v1 local runtime shipped. Current feature work is v2-s1-bus.
 
 | Order | Work | Why |
 |-------|------|-----|
-| 4 | Two other real repos on `ravand which` + `run` ([#56](https://github.com/ravand-ai/RavandAgents/issues/56)) | SUCCESS: `which` is right 100% of the time; a second human can login |
-
-Exit: we refuse naked `grok` / `kimi` / `cursor-agent` on classified repos. Audit answers which profile touched the tree. Then v1.
+| 4 | Two other real repos on `ravand which` + `run` ([#56](https://github.com/ravand-ai/RavandAgents/issues/56)) | **done** |
 
 ## v1: modular local runtime
 

@@ -2,7 +2,7 @@
 
 Open this file first. Other files do not explain the reading order.
 
-v0 CLI exists (`ravand which` / `run` / `login` / `status`). The map is still the reading order. Do not start v1 until [ROADMAP.md](ROADMAP.md) leftover v0 and [SUCCESS.md](SUCCESS.md) four checks are done.
+v0 CLI exists (`ravand which` / `run` / `login` / `status`). Four SUCCESS checks hold ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) closed). Leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). Current feature milestone is v2-s1-bus.
 
 ## Where to start
 
@@ -42,7 +42,7 @@ Do not start this path until you have finished the design path.
 
 | Slice | What you ship | Read before you code | Next slice |
 |-------|---------------|----------------------|------------|
-| 0 | shipped — `uv` workspace, `ravand` console script exists. Leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open. Do not implement issue 51. | Product README, HLD services list, AGENTS.md Slice 0 | 1 |
+| 0 | shipped — `uv` workspace, `ravand` console script exists. SUCCESS [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed. Leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). Do not grow TUI. Do not implement issue 51. | Product README, HLD services list, AGENTS.md Slice 0 | 1 |
 | 1 | `ravand which`, `ravand login`, profile dirs, policy tests | SCHEMA.md, both example tomls, HLD Policy / Profile / Registry | 2 |
 | 2 | ACP runtime, `ravand run --format jsonl` | HLD ACP Runtime, SCHEMA SessionEvent | 3 |
 | 3 | `~/.ravand/sessions/` and `audit.jsonl` | SCHEMA SessionRecord and Audit event, HLD Session and Audit | 4 |
@@ -50,7 +50,7 @@ Do not start this path until you have finished the design path.
 | 5 | OTel spans if `OTEL_EXPORTER_OTLP_ENDPOINT` is set | SCHEMA OTel | 6 |
 | 6 | Bus worker, PGMQ default | HLD Bus, SCHEMA TaskMessage, MODULAR bus seam | stop. `ravand run` must already work |
 
-Prompt text for each slice lives in [AGENTS.md](../AGENTS.md). Copy one slice. Slice 2 works on this repo. Leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open. Do not implement issue 51.
+Prompt text for each slice lives in [AGENTS.md](../AGENTS.md). Copy one slice. Slice 2 works on this repo. SUCCESS [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed. Leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). Current feature milestone is v2-s1-bus. Do not grow TUI. Do not implement issue 51.
 
 To implement with Grok, Kimi, and Cursor, read [SECURITY.md](SECURITY.md) then [BOOTSTRAP.md](BOOTSTRAP.md). One GitHub issue per builder run.
 
@@ -63,7 +63,7 @@ To implement with Grok, Kimi, and Cursor, read [SECURITY.md](SECURITY.md) then [
 | [../README.md](../README.md) | What the product is | [SUCCESS.md](SUCCESS.md) |
 | [SUCCESS.md](SUCCESS.md) | Wedge and what we ship first | [SECURITY.md](SECURITY.md) |
 | [SECURITY.md](SECURITY.md) | Fail closed, agent grants, secret rules | [BOOTSTRAP.md](BOOTSTRAP.md) |
-| [BOOTSTRAP.md](BOOTSTRAP.md) | Ravand builds Ravand. Issue order. Grok/Kimi/Cursor | leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open. Do not implement issue 51. |
+| [BOOTSTRAP.md](BOOTSTRAP.md) | Ravand builds Ravand. Issue order. Grok/Kimi/Cursor | leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). SUCCESS [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed. Current feature milestone is v2-s1-bus. Do not grow TUI. |
 | [ROADMAP.md](ROADMAP.md) | What ships in v0, v1, v2, v3 | [HLD.md](HLD.md) |
 | [HLD.md](HLD.md) | Which services exist and how a run flows | [DSH-CORDIS.md](DSH-CORDIS.md) |
 | [DSH-CORDIS.md](DSH-CORDIS.md) | Cordis architecture we study, kernel we write, differences we keep | [MODULAR.md](MODULAR.md) |
@@ -73,7 +73,7 @@ To implement with Grok, Kimi, and Cursor, read [SECURITY.md](SECURITY.md) then [
 | [GOVERNANCE.md](GOVERNANCE.md) | What we refuse to become | examples, then AGENTS.md |
 | [../examples/harness.toml](../examples/harness.toml) | Repo policy sample | [../examples/policy.user.toml](../examples/policy.user.toml) |
 | [../examples/policy.user.toml](../examples/policy.user.toml) | User config sample | [../AGENTS.md](../AGENTS.md) |
-| [../AGENTS.md](../AGENTS.md) | Hard constraints and slice order | leftover v0 is the four SUCCESS checks ([#56](https://github.com/ravand-ai/RavandAgents/issues/56) for checks 2 and 3). Do not claim those four hold. Do not start v1, Slice 6, or TUI. Issue 56 stays open. Do not implement issue 51. |
+| [../AGENTS.md](../AGENTS.md) | Hard constraints and slice order | leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). SUCCESS [#56](https://github.com/ravand-ai/RavandAgents/issues/56) is closed. Current feature milestone is v2-s1-bus. Do not grow TUI. |
 
 ## If a file disagrees
 
