@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import os
 import shutil
-import subprocess
 import tomllib
 from pathlib import Path
 
@@ -16,7 +14,10 @@ from ravand_profile import ensure_profile_home
 _COOKIE_MARKERS: dict[str, tuple[str, ...]] = {
     "grok": (".grok", "auth.json"),
     "kimi": (".kimi", "credentials"),
+    "cursor": (".cursor",),
+    "claude": (".claude",),
 }
+_GH_MARKER = (".config", "gh", "hosts.yml")
 
 
 def _load_harness(cwd: Path) -> dict:
@@ -35,37 +36,26 @@ def _classification_denied(harness: dict) -> str | None:
     return None
 
 
-def _cookie_login(profile_home: Path, parts: tuple[str, ...]) -> str | None:
-    cookie = profile_home.joinpath(*parts)
+def _cookie_login(profile_home: Path, parts: tuple[str, ...]) -> str:
+    path = profile_home.joinpath(*parts)
     try:
-        size = cookie.stat().st_size
+        if path.is_file():
+            return "logged-in" if path.stat().st_size > 0 else "missing"
+        if path.is_dir():
+            for child in path.iterdir():
+                try:
+                    if child.is_file() and child.stat().st_size > 0:
+                        return "logged-in"
+                except OSError:
+                    continue
+            return "missing"
     except OSError:
         return "missing"
-    if size > 0:
-        return "logged-in"
     return "missing"
 
 
 def _cli_on_path(command: list[str]) -> bool:
     return bool(command) and shutil.which(command[0]) is not None
-
-
-def _cli_version_ok(command: list[str], *, home: Path) -> bool:
-    if not _cli_on_path(command):
-        return False
-    env = os.environ.copy()
-    env["HOME"] = str(home)
-    try:
-        proc = subprocess.run(
-            [command[0], "--version"],
-            capture_output=True,
-            timeout=5,
-            env=env,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return proc.returncode == 0
 
 
 def _probe_login(agent_id: str, command: list[str], profile_home: Path) -> str:
@@ -76,12 +66,10 @@ def _probe_login(agent_id: str, command: list[str], profile_home: Path) -> str:
             return state
         if not _cli_on_path(command):
             return "unknown"
-        return state
+        return "missing"
     if not _cli_on_path(command):
         return "unknown"
-    if _cli_version_ok(command, home=profile_home):
-        return "logged-in"
-    return "unknown"
+    return "missing"
 
 
 def _agent_roles(
@@ -185,4 +173,5 @@ def run_status(cwd: Path) -> int:
         suffix = f" ({', '.join(roles)})" if roles else ""
         print(f"{agent_id}{suffix}: {login}")
 
+    print(f"gh: {_cookie_login(profile_home, _GH_MARKER)}")
     return 0
