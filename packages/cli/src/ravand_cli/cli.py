@@ -21,6 +21,27 @@ from ravand_runtime.plan import plan_mode_active
 NOT_IMPLEMENTED = "not implemented"
 
 
+def _print_run_event(event: dict, *, fmt: str) -> None:
+    if fmt != "text":
+        print(json.dumps(event), flush=True)
+        return
+    etype = str(event.get("type") or "")
+    if etype in {"text.delta", "thinking.delta"}:
+        print(str(event.get("text") or ""), end="", flush=True)
+        return
+    if etype in {"tool.call", "tool.result"}:
+        tool = event.get("tool") or "tool"
+        print(f"\n[{tool}]", flush=True)
+        return
+    if etype == "run.started":
+        print("run started", flush=True)
+        return
+    if etype == "run.ended":
+        status = event.get("status") or ""
+        print(f"\nrun ended {status}", flush=True)
+        return
+
+
 def _harness_template() -> str:
     bundled = Path(__file__).resolve().parent / "harness.toml"
     if bundled.is_file():
@@ -150,9 +171,10 @@ def _run(args: argparse.Namespace) -> int:
         audit_agent_denied(str(exc), cwd=Path.cwd())
         print(str(exc), file=sys.stderr)
         return exc.exit_code
+    fmt = str(getattr(args, "format", "jsonl") or "jsonl")
     if policy.loop == "native":
         def sink(event: dict) -> None:
-            print(json.dumps(event), flush=True)
+            _print_run_event(event, fmt=fmt)
 
         return run_native_prompt(
             policy,
@@ -169,7 +191,7 @@ def _run(args: argparse.Namespace) -> int:
         return denied.exit_code
 
     def sink(event: dict) -> None:
-        print(json.dumps(event), flush=True)
+        _print_run_event(event, fmt=fmt)
 
     yes = bool(getattr(args, "yes", False))
     ask = None
