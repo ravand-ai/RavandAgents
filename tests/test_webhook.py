@@ -190,6 +190,37 @@ def test_password_in_harness_fails_closed(
         load_webhook(repo)
 
 
+def test_missing_webhook_secret_ref_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    home.mkdir()
+    _write_harness(repo, extra=_webhook_extra())
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    bus = Bus()
+    store = SessionStore(home)
+    body = b'{"ok":true}'
+    with pytest.raises(PolicyDenied, match="secret_ref is missing"):
+        handle_webhook(
+            repo,
+            path="/hooks/deploy",
+            body=body,
+            signature=_sig(body),
+            bus=bus,
+            store=store,
+            audit=AuditLog(home),
+        )
+    assert bus.read(QUEUE_TASKS, visibility_timeout=600) is None
+    assert list((home / "sessions").glob("*.json")) == []
+    events = _audit_events(home)
+    assert [event["type"] for event in events] == ["trigger.denied"]
+    blob = (home / "audit.jsonl").read_text(encoding="utf-8")
+    for marker in FORBIDDEN:
+        assert marker not in blob
+    assert SECRET.decode() not in blob
+
+
 def test_unsigned_webhook_fails_closed_and_audits(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

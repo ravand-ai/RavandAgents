@@ -285,7 +285,52 @@ def test_raw_key_in_job_fails_closed(
     assert "sk-secret-value" in text
 
 
+def _write_vault_secret(home: Path, ref: str, body: str) -> None:
+    assert ref.startswith("vault:")
+    path = home / "secrets" / ref.removeprefix("vault:")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(body, encoding="utf-8")
+
+
 def test_secret_ref_is_accepted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    home = tmp_path / "home"
+    home.mkdir()
+    _write_harness(
+        repo,
+        extra=(
+            "[cron]\n"
+            "jobs = [{ id = \"morning\", spec = \"0 9 * * 1-5\", "
+            'prompt = "status", secret_ref = "vault:work/cron" }]\n'
+        ),
+    )
+    _write_vault_secret(home, "vault:work/cron", "cron-secret")
+    monkeypatch.setenv("RAVAND_HOME", str(home))
+    jobs = load_cron_jobs(repo)
+    assert jobs[0].secret_ref == "vault:work/cron"
+    bus = Bus()
+    store = SessionStore(home)
+    fired = fire_cron(
+        repo,
+        now=DUE,
+        bus=bus,
+        store=store,
+        audit=AuditLog(home),
+    )
+    assert [job.id for job in fired] == ["morning"]
+    got = bus.read(QUEUE_TASKS, visibility_timeout=600)
+    assert got is not None
+    assert got.prompt == "status"
+    assert "sk-" not in got.prompt
+    blob = (home / "audit.jsonl").read_text(encoding="utf-8") if (
+        home / "audit.jsonl"
+    ).is_file() else ""
+    assert "cron-secret" not in blob
+
+
+def test_missing_cron_secret_ref_fails_closed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     repo = tmp_path / "repo"
@@ -311,11 +356,13 @@ def test_secret_ref_is_accepted(
         store=store,
         audit=AuditLog(home),
     )
-    assert [job.id for job in fired] == ["morning"]
-    got = bus.read(QUEUE_TASKS, visibility_timeout=600)
-    assert got is not None
-    assert got.prompt == "status"
-    assert "sk-" not in got.prompt
+    assert fired == []
+    assert bus.read(QUEUE_TASKS, visibility_timeout=600) is None
+    events = _audit_events(home)
+    assert [event["type"] for event in events] == ["trigger.denied"]
+    assert events[0]["taskId"] == "morning"
+    blob = (home / "audit.jsonl").read_text(encoding="utf-8")
+    assert "sk-" not in blob
 
 
 def test_two_mondays_mint_distinct_task_ids(
