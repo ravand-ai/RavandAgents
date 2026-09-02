@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import os
-import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ravand_policy.errors import PolicyDenied, UnknownAgent
+from ravand_policy.errors import FailClosed, PolicyDenied, UnknownAgent
+from ravand_policy.store import FilePolicyStore, default_policy_store
 from ravand_policy.vault import secret_present
+
+PolicyStore = FilePolicyStore  # structural: load_toml / user_config / require_reachable
 
 
 def ravand_home() -> Path:
@@ -42,18 +44,6 @@ class ResolvedPolicy:
     account: str = ""
     account_kind: str = ""
     loop: str = "acp"
-
-
-def _load_toml(path: Path) -> dict:
-    with path.open("rb") as handle:
-        return tomllib.load(handle)
-
-
-def _user_config(home: Path) -> dict:
-    path = home / "config.toml"
-    if not path.is_file():
-        return {}
-    return _load_toml(path)
 
 
 def _is_personal_account(account_id: str, record: dict) -> bool:
@@ -257,15 +247,21 @@ def resolve(
     profile_override: str | None = None,
     agent_override: str | None = None,
     account_override: str | None = None,
+    store: FilePolicyStore | None = None,
 ) -> ResolvedPolicy:
     cwd = cwd.resolve()
     harness_path = cwd / "harness.toml"
     home_root = ravand_home()
-    user = _user_config(home_root)
-    missing_harness = not harness_path.is_file()
+    policy_store = store if store is not None else default_policy_store()
+    policy_store.require_reachable(home=home_root, cwd=cwd)
+    user = policy_store.user_config(home_root)
+    try:
+        missing_harness = not harness_path.is_file()
+    except OSError as exc:
+        raise FailClosed("policy unreachable") from exc
 
     if not missing_harness:
-        harness = _load_toml(harness_path)
+        harness = policy_store.load_toml(harness_path)
     else:
         default_profile = user.get("default_profile", "personal")
         harness = {

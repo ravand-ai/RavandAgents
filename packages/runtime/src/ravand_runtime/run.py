@@ -43,6 +43,16 @@ AskFn = Callable[[str], bool]
 _OVERFLOW_MARKERS = ("rate_limit", "quota", "crash")
 
 
+def _bus_require_reachable(bus: object) -> None:
+    """Fail closed when an injected bus/DB is down. No soft-deny."""
+    require = getattr(bus, "require_reachable", None)
+    if require is None:
+        from ravand_bus import FailClosed as BusFailClosed
+
+        raise BusFailClosed("bus unreachable")
+    require()
+
+
 def _policy_hash(policy: ResolvedPolicy) -> str:
     payload = json.dumps(
         {
@@ -559,6 +569,7 @@ def run_prompt(
     cancel: threading.Event | None = None,
     tracer: Tracer | None = None,
     acp_forward: Callable[[dict[str, Any]], None] | None = None,
+    bus: object | None = None,
 ) -> int:
     cwd = cwd.resolve()
     task_id = str(uuid.uuid4())
@@ -566,6 +577,17 @@ def run_prompt(
     store = SessionStore(root)
     log = AuditLog(root)
     tracer = tracer if tracer is not None else Tracer.from_env()
+
+    if bus is not None:
+        try:
+            _bus_require_reachable(bus)
+        except Exception as exc:
+            from ravand_bus import FailClosed as BusFailClosed
+
+            if not isinstance(exc, BusFailClosed):
+                raise
+            audit_agent_denied(str(exc), cwd=cwd)
+            raise
 
     try:
         agent_prompt, memory_store = _memory_for_run(

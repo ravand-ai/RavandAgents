@@ -8,6 +8,7 @@ from ravand_policy.resolve import (
     require_skill,
     resolve,
 )
+from ravand_policy.store import DownPolicyStore, FilePolicyStore, default_policy_store
 from ravand_policy.users import ProjectAccess, resolve_access
 from ravand_policy.vault import load_secret, require_secret_ref, secret_present
 
@@ -17,6 +18,9 @@ __all__ = [
     "UnknownAgent",
     "ResolvedPolicy",
     "ProjectAccess",
+    "DownPolicyStore",
+    "FilePolicyStore",
+    "default_policy_store",
     "ravand_home",
     "require_function",
     "require_skill",
