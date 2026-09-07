@@ -4,7 +4,7 @@ Open this file first. Other files do not explain the reading order.
 
 Destination: a modular control plane (Hermes-class harness, Grok and other CLIs as backends, OpenClaw-class gateway, AgentField identity, orchestration). [SUCCESS.md](SUCCESS.md) wins on first ship. [HLD.md](HLD.md) and [MODULAR.md](MODULAR.md) win on what the product is.
 
-v0 CLI exists (`ravand which` / `run` / `login` / `status`). First-ship checks: [#56](https://github.com/ravand-ai/RavandAgents/issues/56). Leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). Do not grow TUI. Do not treat v0 as the end of the product.
+v0 CLI exists (`ravand which` / `run` / `login` / `status`). `ravand init` and `ravand serve` exist too. First-ship checks: [#56](https://github.com/ravand-ai/RavandAgents/issues/56). Leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). Do not grow TUI. Do not treat v0 as the end of the product.
 
 ## Where to start
 
@@ -17,6 +17,7 @@ v0 CLI exists (`ravand which` / `run` / `login` / `status`). First-ship checks: 
 | Implement a slice | [../AGENTS.md](../AGENTS.md) | The slice table in this file |
 | Build this repo with Grok/Kimi/Cursor | [SECURITY.md](SECURITY.md) | [BOOTSTRAP.md](BOOTSTRAP.md) |
 | See a real policy file | [../examples/harness.toml](../examples/harness.toml) | [SCHEMA.md](SCHEMA.md) |
+| Use the CLI | [USAGE.md](USAGE.md) | [../examples/harness.toml](../examples/harness.toml) |
 
 ## Design path (read these now)
 
@@ -63,6 +64,7 @@ To implement with Grok, Kimi, and Cursor, read [SECURITY.md](SECURITY.md) then [
 | [docs/README.md](README.md) | Where to start | [../README.md](../README.md) |
 | [../LICENSE](../LICENSE) | BSL 1.1 terms and Additional Use Grant | not on the design path |
 | [../README.md](../README.md) | What the product is | [SUCCESS.md](SUCCESS.md) |
+| [USAGE.md](USAGE.md) | How to install and run ravand | examples, then SCHEMA.md |
 | [SUCCESS.md](SUCCESS.md) | Destination, first ship, why DSH, why we compare | [ROADMAP.md](ROADMAP.md) |
 | [SECURITY.md](SECURITY.md) | Fail closed, agent grants, secret rules | [BOOTSTRAP.md](BOOTSTRAP.md) |
 | [BOOTSTRAP.md](BOOTSTRAP.md) | Ravand builds Ravand. Issue order. Grok/Kimi/Cursor | leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). Do not grow TUI. Do not treat v0 as the end of the product. |
