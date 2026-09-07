@@ -4,7 +4,7 @@ Open this file first. Other files do not explain the reading order.
 
 Destination: a modular control plane (Hermes-class harness, Grok and other CLIs as backends, OpenClaw-class gateway, AgentField identity, orchestration). [SUCCESS.md](SUCCESS.md) wins on first ship. [HLD.md](HLD.md) and [MODULAR.md](MODULAR.md) win on what the product is.
 
-v0 CLI exists (`ravand which` / `run` / `login` / `status`). First-ship checks: [#56](https://github.com/ravand-ai/RavandAgents/issues/56). Leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). Do not grow TUI. Do not treat v0 as the end of the product.
+v0 CLI exists (`ravand which` / `run` / `login` / `status`). `ravand init` and `ravand serve` exist too. First-ship checks: [#56](https://github.com/ravand-ai/RavandAgents/issues/56). Leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). Do not grow TUI. Do not treat v0 as the end of the product.
 
 ## Where to start
 
