@@ -61,7 +61,9 @@ Do not push directly to a branch in this table.
 
 Follow the `task-protocol` skill for a feature, a bug fix, and a ticket.
 
-Use the plan mode of the current harness. Wait for the user to accept the plan. Do not write product code before that.
+Do not wait for plan, branch, commit, or pull-request approval.
+Write the plan. Then build, verify, commit, review, push, and open the PR.
+Human still merges to `main`. Builder never merges.
 
 Use the `coder` agent for Build and Verify when the harness has that agent.
 
