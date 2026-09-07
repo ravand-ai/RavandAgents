@@ -17,6 +17,7 @@ v0 CLI exists (`ravand which` / `run` / `login` / `status`). First-ship checks: 
 | Implement a slice | [../AGENTS.md](../AGENTS.md) | The slice table in this file |
 | Build this repo with Grok/Kimi/Cursor | [SECURITY.md](SECURITY.md) | [BOOTSTRAP.md](BOOTSTRAP.md) |
 | See a real policy file | [../examples/harness.toml](../examples/harness.toml) | [SCHEMA.md](SCHEMA.md) |
+| Use the CLI | [USAGE.md](USAGE.md) | [../examples/harness.toml](../examples/harness.toml) |
 
 ## Design path (read these now)
 
@@ -63,6 +64,7 @@ To implement with Grok, Kimi, and Cursor, read [SECURITY.md](SECURITY.md) then [
 | [docs/README.md](README.md) | Where to start | [../README.md](../README.md) |
 | [../LICENSE](../LICENSE) | BSL 1.1 terms and Additional Use Grant | not on the design path |
 | [../README.md](../README.md) | What the product is | [SUCCESS.md](SUCCESS.md) |
+| [USAGE.md](USAGE.md) | How to install and run ravand | examples, then SCHEMA.md |
 | [SUCCESS.md](SUCCESS.md) | Destination, first ship, why DSH, why we compare | [ROADMAP.md](ROADMAP.md) |
 | [SECURITY.md](SECURITY.md) | Fail closed, agent grants, secret rules | [BOOTSTRAP.md](BOOTSTRAP.md) |
 | [BOOTSTRAP.md](BOOTSTRAP.md) | Ravand builds Ravand. Issue order. Grok/Kimi/Cursor | leftover CLI is [#162](https://github.com/ravand-ai/RavandAgents/issues/162). Do not grow TUI. Do not treat v0 as the end of the product. |

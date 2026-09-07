@@ -3,11 +3,11 @@
 Reading: [docs map](docs/README.md)
 
 Previous: [docs map](docs/README.md)
-Next: [How Ravand can succeed](docs/SUCCESS.md), then [Roadmap](docs/ROADMAP.md)
+Next: [How to use Ravand](docs/USAGE.md) for operators; [How Ravand can succeed](docs/SUCCESS.md), then [Roadmap](docs/ROADMAP.md) for destination
 
 Ravand Agents is a modular agent control plane. The destination is a Hermes-class harness, Grok and other subscription CLIs as backends, an OpenClaw-class gateway, AgentField identity, and full orchestration. A project picks providers, accounts, loops, tools, MCP, sandbox, workflows, and pipelines. Some agents are personal. Some are work. Some start from CLI, webhook, or cron.
 
-v0 sits above subscription CLIs you already pay for (Claude Code, Grok Build, Kimi Code, Cursor Agent, DeepSeek Harness) over ACP. Later slices add the native loop, gateway, memory, workflows, and identity. Secrets never go in git. Policy fail-closes.
+v0 sits above subscription CLIs you already pay for (Claude Code, Grok Build, Kimi Code, Cursor Agent, DeepSeek Harness) over ACP. `ravand serve` is the local gateway. Native loop, cloud users, and identity come later. Secrets never go in git. Policy fail-closes.
 
 ```
 you / IDE / CI / cloud user
@@ -25,18 +25,29 @@ People and small teams hold mixed seats: company Cursor, personal Kimi, work Cla
 
 The unit of value for Ravand Agents: **which account, under which profile, with which tools and sandbox, may touch this repo.**
 
-## What v0 is
+## Install
 
-A local CLI + policy file.
+Use Python 3.12 or newer. Install `uv`.
 
 ```bash
+uv sync
+uv run ravand --help
+```
+
+Operator how-to: [docs/USAGE.md](docs/USAGE.md).
+
+## Commands
+
+A local CLI + policy file. From this repo, use `uv run ravand`.
+
+```bash
+ravand init                  # write ./harness.toml
 ravand which                 # resolve agent + profile for cwd
 ravand run "add rate limits" # spawn that ACP agent
-ravand run -a grok "review"  # override
-ravand run -a kimi "..."     # same ACP handshake, isolated profile HOME
-ravand run -a cursor "..."   # same ACP handshake, isolated profile HOME
+ravand run -a grok "review"  # override agent
 ravand login work            # print how to auth CLIs into the work HOME
-ravand status                # workers, queue (v2), login probes
+ravand status                # login doctor
+ravand serve                 # HTTP + cron + worker on loopback
 ```
 
 ## Repo layout
@@ -48,6 +59,7 @@ AGENTS.md                 # project rules + implement slices
 README.md                 # product pitch
 docs/
   README.md               # start here: reading order
+  USAGE.md                # operator how-to
   ROADMAP.md
   HLD.md
   DSH-CORDIS.md          # Cordis-shaped kernel, not the Cordis package
@@ -62,19 +74,19 @@ examples/
   harness.toml
   policy.user.toml
 pyproject.toml            # uv, Python 3.12+ (added in Slice 0)
-packages/                 # implement here; empty until generated
-  acp-client/
+packages/
+  audit/
+  bus/
+  cli/
+  hooks/
+  memory/
+  permissions/
+  plugins/
   policy/
   profile/
   registry/
   runtime/
-  permissions/
   sessions/
-  audit/
-  dispatcher/
-  worker/
-  observability/
-  cli/
 ```
 
 ## Non-goals
@@ -95,4 +107,6 @@ This is not an OSI open-source license today. Contributor perks and yearly comme
 
 ## Next
 
-Open [docs/README.md](docs/README.md). Follow the design path there. Do not start Slice 0 from this page.
+Operators: open [docs/USAGE.md](docs/USAGE.md).
+
+Implementers: open [docs/README.md](docs/README.md) and follow the design path.
